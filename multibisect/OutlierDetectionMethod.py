@@ -64,10 +64,10 @@ class OdLOF(OutlierDetectionMethod):
 
     def predict(self, x):
         if not self.fitted:
-            raise ("trying to predict OdLOF that was not fitted yet")
+            raise "trying to predict OdLOF that was not fitted yet"
         model = self.get_model()
         x = x.reshape(1, -1)
-        decision = model.predict(x)[0,]
+        decision = model.predict(x)[0, ]
         del model
         return decision
 

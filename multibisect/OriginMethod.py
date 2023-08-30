@@ -75,11 +75,11 @@ origin_method_classes = {
 
 
 # Use the classes
-def get_origin(df, out_indicator, or_type):
-    print(f"Origin method: {or_type}")
+def get_origin(data, out_indicator, or_type):
+    print(f"given Origin method: {or_type}")
     if or_type in origin_method_classes:
         method = origin_method_classes[or_type]
-        return method(df, out_indicator)
+        return method(data, out_indicator)
     else:
         raise ValueError(
             "Invalid type argument provided. Should be one of 'centroid', 'least_outlier', 'random', 'weighted'")
