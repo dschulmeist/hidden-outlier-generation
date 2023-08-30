@@ -56,18 +56,18 @@ class OdLOF(OutlierDetectionMethod):
             pickle.dump(model, f)
         del model
 
-    def get_model(self):
+    def get_model(self) -> LOF:
         # load model from disk
         with open(self.location, 'rb') as f:
             loaded_model = pickle.load(f)
         return loaded_model
 
-    def predict(self, x):
+    def predict(self, x) -> bool:
         if not self.fitted:
             raise "trying to predict OdLOF that was not fitted yet"
         model = self.get_model()
         x = x.reshape(1, -1)
-        decision = model.predict(x)[0, ]
+        decision = bool(model.predict(x)[0, ])
         del model
         return decision
 

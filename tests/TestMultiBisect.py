@@ -4,9 +4,10 @@ import unittest
 
 import numpy as np
 
-from multibisect.MultiBisect import fit_model, fit_in_all_subspaces, outlier_check, interval_check, inference
+from multibisect.MultiBisect import outlier_check, interval_check, inference
 from multibisect.OutlierDetectionMethod import OdLOF
 from multibisect.ResultType import ResultType
+from multibisect.Utils import fit_model, fit_in_all_subspaces
 
 
 class TestMultiBisectBasic(unittest.TestCase):
@@ -21,7 +22,7 @@ class TestMultiBisectBasic(unittest.TestCase):
         self.outlier_detection_method = OdLOF
 
         self.fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir,
-                                                     seed=self.seed)
+                                                     seed=self.seed, subspace_limit=12, n_jobs=-2)
 
     def tearDown(self):
         # Delete the temporary directory and its contents
@@ -40,7 +41,7 @@ class TestMultiBisectBasic(unittest.TestCase):
 
     def test_outlier_check(self):
         # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir, seed=self.seed)
-        print(fitted_subspaces)
+
         result = outlier_check(self.data[0], self.full_space,
                                fitted_subspaces=self.fitted_subspaces, verb=False, fast=True)
         self.assertIsInstance(result, ResultType)

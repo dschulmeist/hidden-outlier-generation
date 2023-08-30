@@ -1,22 +1,17 @@
+import logging
 import os
-import random
 import shutil
 import time
-import logging
 from datetime import datetime
 
-from itertools import combinations
-
-import numpy
 import numpy as np
-
-from multibisect.OutlierDetectionMethod import OdLOF, OutlierDetectionMethod
-from numpy import ndarray
 from joblib import Parallel, delayed
+from numpy import ndarray
 
 from multibisect import Utils, OriginMethod
+from multibisect.OutlierDetectionMethod import OdLOF, OutlierDetectionMethod
 from multibisect.ResultType import ResultType
-from multibisect.Utils import subspace_grab, gen_powerset, gen_rand_subspaces
+from multibisect.Utils import subspace_grab, fit_in_all_subspaces
 
 n_jobs = -2
 logging.basicConfig(level=logging.INFO,
@@ -28,63 +23,6 @@ DEFAULT_SEED = 5
 DEFAULT_NUMBER_OF_ITERATIONS = 30
 DEFAULT_NUMBER_OF_GEN_POINTS = 100
 DEFAULT_C = 0.5
-
-
-def fit_model(subspace, data, outlier_detection_method, tempdir) -> (tuple, OutlierDetectionMethod):
-    """
-    Fit a model for a given subspace.
-
-    Args:
-    subspace (tuple): The subspace to fit the model on.
-    data (ndarray): The dataset.
-    outlier_detection_method (class): The outlier detection model class.
-    tempdir (str): Temporary directory for storing data.
-
-    Returns:
-    tuple: The subspace and the fitted model.
-    """
-    model = outlier_detection_method(subspace, tempdir)
-    model.fit(subspace_grab(subspace, data))
-    return subspace, model
-
-
-def fit_in_all_subspaces(outlier_detection_method, data, tempdir, seed=DEFAULT_SEED) -> dict:
-    """
-    Fits models for all possible subspaces of the given data.
-
-    Args:
-        outlier_detection_method (class): The outlier detection model class.
-        data (ndarray): The dataset.
-        tempdir (str): Temporary directory for storing data.
-        seed (int, optional): Seed for random number generator. Defaults to 5.
-
-    Returns:
-        dict: Dictionary of models fitted on different subspaces.
-    """
-    # Determine the number of dimensions in the data
-    dims = data.shape[1]
-
-    # Choose subspaces either from powerset or randomly based on dimensionality
-    if dims < SUBSPACE_LIMIT:
-        subspaces = Utils.gen_powerset(dims)
-    else:
-        subspaces = Utils.gen_rand_subspaces(dims, SUBSPACE_LIMIT, include_all_attr=True, seed=seed)
-    # Log information
-    logging.info("Fitting all subspaces....")
-    # Parallel execution for model fitting
-    results = Parallel(n_jobs=n_jobs, timeout=FITTING_TIMEOUT_TIME)(
-        delayed(fit_model)(subspace, data, outlier_detection_method, tempdir) for subspace in subspaces)
-    fitted_subspaces = dict(results)
-
-    # Additional handling for full space
-    logging.info("Fitting in the full space....")
-    full_space = tuple(range(0, dims))
-    fitted_subspaces[full_space] = outlier_detection_method(full_space, tempdir)
-    fitted_subspaces[full_space].fit(data)
-    del results  # Free up memory
-
-    logging.info(f"Set of fitted Subspaces size: {len(fitted_subspaces)}")
-    return fitted_subspaces
 
 
 def outlier_check(x, full_space, fitted_subspaces, verb=False, fast=True) -> ResultType:
@@ -148,7 +86,7 @@ def inference(x, subspace, fitted_subspaces=None) -> bool:
     Returns:
         bool: True if the data point is an outlier, False otherwise.
     """
-    if not isinstance(subspace, tuple):
+    if not isinstance(subspace, tuple) :
         print("Subspace: ", subspace, type(subspace), " is not a tuple")
         raise ValueError(
             "Error in Code, subspace needs to be a tuple")
@@ -156,23 +94,25 @@ def inference(x, subspace, fitted_subspaces=None) -> bool:
     if subspace not in fitted_subspaces.keys():
         logging.info("type of subsp: ", type(subspace), " subspace: ", list(subspace))
         raise ValueError(f"Subspace {subspace} not in the dictionary of fitted subspaces")
-    return fitted_subspaces[subspace].predict(x)
+    return bool(fitted_subspaces[subspace].predict(x))
 
 
-def interval_check(length, direction, origin, parts=5, full_space=None, fitted_subspaces=None):
+def interval_check(length, direction, origin, full_space, fitted_subspaces, parts=5):
     """
     Interval Refining function
 
-    Breaks the interval in however many parts selected
+    Breaks the interval in the selected number of parts
     (defaults to 5) and checks if each part is an Outlier or an Inlier
-    in the global space (D). After that it stores each subinterval such
-    in a single list, that then is returned
+    in the global space. After that it stores each sub-interval
+    in a list
 
     Arguments:
-    l: Length of the original interval
+    length: Length of the original interval
     method: ODM
-    x: Directional vector selected
+    direction: Directional vector selected
+    origin: origin
     parts: Number of parts to which cut the interval
+    fitted_subspaces: a dictionary containing fitted Subspaces (OutlierDetectionMethod)
     """
 
     segmentation_points = np.linspace(0, length, num=parts)
@@ -344,13 +284,15 @@ class MultiBisectHOGen:
             check_fast (bool): If True, terminates as soon as one outlier is found.
             fixed_interval_length (bool): If True, keeps the interval length fixed.
             get_origin_type (str): Method to determine the origin of the new points.
+            verbose (bool): activate verbose mode
 
         Returns:
             np.array: Array containing generated hidden outliers.
         """
         self.start_time = time.time()
         self.fitted_subspaces_dict = fit_in_all_subspaces(self.outlier_detection_method, self.data, seed=self.seed,
-                                                          tempdir=self.tempFName)
+                                                          tempdir=self.tempFName, subspace_limit=SUBSPACE_LIMIT,
+                                                          n_jobs=n_jobs)
         self.outlier_indices = self.get_outlier_indices()
         seed = self.seed
         length = np.max(np.sqrt(np.sum(self.data ** 2, axis=1)))  # length of the largest Vector in the dataset

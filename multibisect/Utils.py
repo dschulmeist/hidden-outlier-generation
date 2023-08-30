@@ -1,8 +1,14 @@
+import logging
 import random
 from itertools import chain, combinations
+from multibisect.OutlierDetectionMethod import OutlierDetectionMethod
 
 import numpy as np
+from joblib import Parallel, delayed
 from scipy.stats import norm
+
+FITTING_TIMEOUT_TIME = 60
+DEFAULT_SEED = 5
 
 
 def random_unif_on_sphere(number, dimensions, r, random_state=5):
@@ -53,9 +59,61 @@ def gen_rand_subspaces(dims, upper_limit, include_all_attr=True, seed=5):
     return subspaces
 
 
-list0 = gen_powerset(4)
-print(list0)
+def fit_model(subspace, data, outlier_detection_method, tempdir) -> (tuple, OutlierDetectionMethod):
+    """
+    Fit a model for a given subspace.
 
-list1 = gen_rand_subspaces(4, 4, include_all_attr=True, seed=5)
+    Args:
+    subspace (tuple): The subspace to fit the model on.
+    data (ndarray): The dataset.
+    outlier_detection_method (class): The outlier detection model class.
+    tempdir (str): Temporary directory for storing data.
 
-print(list1)
+    Returns:
+    tuple: The subspace and the fitted model.
+    """
+    model = outlier_detection_method(subspace, tempdir)
+    model.fit(subspace_grab(subspace, data))
+    return subspace, model
+
+
+def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit, seed=DEFAULT_SEED, n_jobs=-2) -> dict:
+    """
+    Fits models for all possible subspaces of the given data.
+
+    Args:
+        outlier_detection_method (class): The outlier detection model class.
+        data (ndarray): The dataset.
+        tempdir (str): Temporary directory for storing data.
+        subspace_limit: 2^subspace_limit will be the maximum amount of subspaces fitted
+        seed (int, optional): Seed for random number generator. Defaults to 5.
+        n_jobs (int): number of cores to use
+
+    Returns:
+        dict: Dictionary of models fitted on different subspaces.
+
+    """
+    # Determine the number of dimensions in the data
+    dims = data.shape[1]
+
+    # Choose subspaces either from powerset or randomly based on dimensionality
+    if dims < subspace_limit:
+        subspaces = gen_powerset(dims)
+    else:
+        subspaces = gen_rand_subspaces(dims, subspace_limit, include_all_attr=True, seed=seed)
+    # Log information
+    logging.info("Fitting all subspaces....")
+    # Parallel execution for model fitting
+    results = Parallel(n_jobs=n_jobs, timeout=FITTING_TIMEOUT_TIME)(
+        delayed(fit_model)(subspace, data, outlier_detection_method, tempdir) for subspace in subspaces)
+    fitted_subspaces = dict(results)
+
+    # Additional handling for full space
+    logging.info("Fitting in the full space....")
+    full_space = tuple(range(0, dims))
+    fitted_subspaces[full_space] = outlier_detection_method(full_space, tempdir)
+    fitted_subspaces[full_space].fit(data)
+    del results  # Free up memory
+
+    logging.info(f"Set of fitted Subspaces size: {len(fitted_subspaces)}")
+    return fitted_subspaces
