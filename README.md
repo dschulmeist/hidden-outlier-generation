@@ -17,7 +17,7 @@ To install the package, you can simply clone this GitHub repository.
 Import the module and call the `main_multi_bisect()` method:
 
 ```python
-from multibisect import MultiBisectHOGen
+from src.multibisect import MultiBisectHOGen
 
 # Initialize
 generator = MultiBisectHOGen(data, outlier_detection_method=OdLOF, seed=42)

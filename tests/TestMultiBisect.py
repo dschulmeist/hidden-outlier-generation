@@ -4,10 +4,10 @@ import unittest
 
 import numpy as np
 
-from multibisect.Bisect import outlier_check, interval_check, inference
-from multibisect.OutlierDetectionMethod import OdPYOD
-from multibisect.OutlierResultType import OutlierResultType
-from multibisect.Utils import fit_model, fit_in_all_subspaces
+from src.multibisect import outlier_check, interval_check, inference
+from src.multibisect import OdPYOD
+from src.multibisect import OutlierResultType
+from src.multibisect import fit_model, fit_in_all_subspaces
 
 
 class TestMultiBisectBasic(unittest.TestCase):
