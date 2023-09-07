@@ -162,7 +162,7 @@ def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMB
         interval_length = interval_length + np.random.uniform(-interval_length / 2, interval_length)
     interval = interval_check(interval_length, direction, origin, full_space=full_space,
                               fitted_subspaces=fitted_subspaces)
-    choice = np.random.choice(len(interval), 1)[0,]
+    choice = np.random.choice(len(interval), 1)[0, ]
     interval = interval[choice]
     interval_indicator = interval[1]
     interval = interval[0]
@@ -200,7 +200,7 @@ def parallel_routine_generate_point(i, interval_length,
     if get_origin_type in ["random", "weighted"]:
         origin = om.calculate_origin()
 
-    direction = Utils.random_unif_on_sphere(2, dims, 1, seed)[0,]
+    direction = utils.random_unif_on_sphere(2, dims, 1, seed)[0, ]
     bisection_results = bisect(interval_length=interval_length, direction=direction,
                                is_check_fast=check_fast,
                                fixed_interval_length=fixed_interval_length,
@@ -303,7 +303,7 @@ class BisectHOGen:
         self.outlier_indices = self.get_outlier_indices()
         seed = self.seed
         length = np.max(np.sqrt(np.sum(self.data ** 2, axis=1)))  # length of the largest Vector in the dataset
-        origin_method = OriginMethod.get_origin(self.data, self.outlier_indices, get_origin_type)
+        origin_method = originMethod.get_origin(self.data, self.outlier_indices, get_origin_type)
         origin = origin_method.calculate_origin()
         fitted_subspaces = self.fitted_subspaces_dict
         full_space = self.full_space

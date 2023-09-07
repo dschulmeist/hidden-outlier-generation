@@ -3,14 +3,16 @@ import shutil
 import unittest
 
 import numpy as np
+import pyod
 
-from src.bisect import outlier_check, interval_check, inference
-from src.bisect import OdPYOD
+from src.bisect.bisect import outlier_check, interval_check, inference
+from src.bisect.outlierDetectionMethod import OdPYOD
 from src.bisect import outlierResultType
-from src.bisect import fit_model, fit_in_all_subspaces
+from src.bisect.utils import fit_model, fit_in_all_subspaces
+from src.bisect.outlierResultType import OutlierResultType
 
 
-class TestMultiBisectBasic(unittest.TestCase):
+class TestBisectBasic(unittest.TestCase):
     def setUp(self):
         self.seed = 5
         np.random.seed(self.seed)
@@ -19,7 +21,7 @@ class TestMultiBisectBasic(unittest.TestCase):
         self.tempdir = "./tempdir"  # Dummy temporary directory
         self.subspace = (0, 1)  # Dummy subspace
         self.full_space = (0, 1, 2, 3, 4)  # Dummy full space
-        self.outlier_detection_method = OdPYOD
+        self.outlier_detection_method = pyod.models.lof.LOF
 
         self.fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir,
                                                      seed=self.seed, subspace_limit=12, n_jobs=-2)

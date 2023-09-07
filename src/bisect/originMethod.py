@@ -83,3 +83,4 @@ def get_origin(data, out_indicator, or_type):
     else:
         raise ValueError(
             "Invalid type argument provided. Should be one of 'centroid', 'least_outlier', 'random', 'weighted'")
+
