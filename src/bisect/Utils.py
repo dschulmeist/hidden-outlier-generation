@@ -1,7 +1,7 @@
 import logging
 import random
 from itertools import chain, combinations
-from src.multibisect.OutlierDetectionMethod import OutlierDetectionMethod, get_outlier_detection_method
+from src.bisect.OutlierDetectionMethod import OutlierDetectionMethod, get_outlier_detection_method
 
 import numpy as np
 from joblib import Parallel, delayed

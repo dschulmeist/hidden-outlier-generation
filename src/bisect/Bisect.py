@@ -9,11 +9,11 @@ import pyod.models.lof
 from joblib import Parallel, delayed
 from numpy import ndarray
 
-from src.multibisect import OriginMethod
-from src.multibisect import Utils
-from src.multibisect.OutlierDetectionMethod import get_outlier_detection_method
-from src.multibisect.OutlierResultType import OutlierResultType
-from src.multibisect.Utils import subspace_grab, fit_in_all_subspaces
+from src.bisect import OriginMethod
+from src.bisect import Utils
+from src.bisect.OutlierDetectionMethod import get_outlier_detection_method
+from src.bisect.OutlierResultType import OutlierResultType
+from src.bisect.Utils import subspace_grab, fit_in_all_subspaces
 
 # n_jobs = 1
 logging.basicConfig(level=logging.INFO,
