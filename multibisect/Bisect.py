@@ -14,11 +14,11 @@ from multibisect.OutlierDetectionMethod import OdPYOD, OutlierDetectionMethod, g
 from multibisect.OutlierResultType import OutlierResultType
 from multibisect.Utils import subspace_grab, fit_in_all_subspaces
 
-n_jobs = -2
+# n_jobs = 1
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-SUBSPACE_LIMIT = 12
+SUBSPACE_LIMIT = 11
 FITTING_TIMEOUT_TIME = 60
 DEFAULT_SEED = 5
 DEFAULT_NUMBER_OF_ITERATIONS = 30
@@ -87,7 +87,7 @@ def inference(x, subspace, fitted_subspaces=None) -> bool:
     Returns:
         bool: True if the data point is an outlier, False otherwise.
     """
-    if not isinstance(subspace, tuple) :
+    if not isinstance(subspace, tuple):
         print("Subspace: ", subspace, type(subspace), " is not a tuple")
         raise ValueError(
             "Error in Code, subspace needs to be a tuple")
@@ -247,7 +247,7 @@ class BisectHOGen:
         self.seed = seed
         self.data = data
         self.dims = self.data.shape[1]
-        self.outlier_detection_method = get_outlier_detection_method(outlier_detection_method)
+        self.outlier_detection_method = outlier_detection_method
         self.fitted_subspaces_dict = None
         self.outlier_indices = None
         self.full_space = tuple(np.arange(self.data.shape[1]))
@@ -276,8 +276,9 @@ class BisectHOGen:
 
         return outlier_indices
 
-    def main_multi_bisect(self, gen_points=100, check_fast=True,
-                          fixed_interval_length=True, get_origin_type="weighted", verbose=True) -> ndarray:
+    def main_multi_bisect(self, gen_points: int = 100, check_fast: bool = True,
+                          fixed_interval_length: bool = True, get_origin_type="weighted", verbose: bool = True,
+                          n_jobs: int = 1) -> ndarray:
         """
         Main function to perform multi-bisection algorithm for generating synthetic hidden outliers.
 
@@ -285,11 +286,14 @@ class BisectHOGen:
             gen_points (int): Number of points to generate.
             check_fast (bool): If True, terminates as soon as one outlier is found.
             fixed_interval_length (bool): If True, keeps the interval length fixed.
-            get_origin_type (str): Method to determine the origin of the new points.
+            get_origin_type (str): Method to determine the origin of the new points. One of:
+                                    "random", "weighted", "least outlier", "centroid".
             verbose (bool): activate verbose mode
+            n_jobs: number of jobs to run in parallel
 
         Returns:
             np.array: Array containing generated hidden outliers.
+
         """
         self.start_time = time.time()
         self.fitted_subspaces_dict = fit_in_all_subspaces(self.outlier_detection_method, self.data, seed=self.seed,
@@ -353,7 +357,8 @@ class BisectHOGen:
         h2_outliers = self.hidden_x_type[np.where(self.hidden_x_type == 'H2')].shape[0]
 
         print('Hidden Outlier Generation Method Object' + '\n\n' +
-              'Outlier detection method used: ' + self.outlier_detection_method.name + '\n' +
+              'Outlier detection method used: ' + get_outlier_detection_method(self
+                                                                               .outlier_detection_method).name + '\n' +
               'Synthetic HO generation method employed: ' + "multi_bisection" + '.\n\n' +
               'Database summary' + ':\n\n' +
               '* ' + 'Number of features: ' + str(db_cols) + '\n' +

@@ -40,7 +40,8 @@ class TestMultiBisectBasic(unittest.TestCase):
         self.assertIsInstance(model, OdPYOD)
 
     def test_outlier_check(self):
-        # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir, seed=self.seed)
+        # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir,
+        # seed=self.seed)
 
         result = outlier_check(self.data[0], self.full_space,
                                fitted_subspaces=self.fitted_subspaces, verb=False, fast=True)
@@ -50,13 +51,15 @@ class TestMultiBisectBasic(unittest.TestCase):
         length = 5
         direction = np.array([1, 0, 0, 0, 0])
         origin = np.array([0, 0, 0, 0, 0])
-        # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir, seed=self.seed)
+        # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir,
+        # seed=self.seed)
         result = interval_check(length, direction, origin, parts=5, full_space=self.full_space,
                                 fitted_subspaces=self.fitted_subspaces)
         self.assertIsInstance(result, list)
 
     def test_inference(self):
-        # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir, seed=self.seed)
+        # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir,
+        # seed=self.seed)
         result = inference(self.data[0], self.full_space,
                            fitted_subspaces=self.fitted_subspaces)
         self.assertIsInstance(result, bool)

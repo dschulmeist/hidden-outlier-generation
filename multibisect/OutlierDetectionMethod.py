@@ -14,6 +14,7 @@ from scipy.stats import chi2
 
 class OutlierDetectionMethod(ABC):
     name = ""
+    model = None
 
     def __init__(self):
         self.fitted = False
@@ -34,6 +35,7 @@ class OutlierDetectionMethod(ABC):
 def get_outlier_detection_method(method):
     if pyod.models.base.BaseDetector.__subclasscheck__(method):
         OdPYOD.model = method
+        OdPYOD.name = method.__name__
         return OdPYOD
     elif method == "mahalanobis":
         return ODmahalanobis
@@ -43,11 +45,9 @@ def get_outlier_detection_method(method):
 
 # class for pyod based outlier detection methods
 class OdPYOD(OutlierDetectionMethod):
-    model = None
 
     def __init__(self, subspace, tempdir):
         super().__init__()
-
         self.tempdir = tempdir
         self.subspace = subspace
         self.name = "ODM_on_" + str(hash(subspace))
@@ -117,4 +117,4 @@ class ODmahalanobis(OutlierDetectionMethod):
         """
         return chi2.ppf(0.95, df=self.shape[1])  # Updated to work with numpy array
 
-#%%
+# %%

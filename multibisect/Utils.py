@@ -1,7 +1,7 @@
 import logging
 import random
 from itertools import chain, combinations
-from multibisect.OutlierDetectionMethod import OutlierDetectionMethod
+from multibisect.OutlierDetectionMethod import OutlierDetectionMethod, get_outlier_detection_method
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -72,12 +72,13 @@ def fit_model(subspace, data, outlier_detection_method, tempdir) -> (tuple, Outl
     Returns:
     tuple: The subspace and the fitted model.
     """
-    model = outlier_detection_method(subspace, tempdir)
+    odm = get_outlier_detection_method(outlier_detection_method)
+    model = odm(subspace, tempdir)
     model.fit(subspace_grab(subspace, data))
     return subspace, model
 
 
-def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit, seed=DEFAULT_SEED, n_jobs=-2) -> dict:
+def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit, seed=DEFAULT_SEED, n_jobs=1) -> dict:
     """
     Fits models for all possible subspaces of the given data.
 
@@ -111,7 +112,7 @@ def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit
     # Additional handling for full space
     logging.info("Fitting in the full space....")
     full_space = tuple(range(0, dims))
-    fitted_subspaces[full_space] = outlier_detection_method(full_space, tempdir)
+    fitted_subspaces[full_space] = get_outlier_detection_method(outlier_detection_method)(full_space, tempdir)
     fitted_subspaces[full_space].fit(data)
     del results  # Free up memory
 

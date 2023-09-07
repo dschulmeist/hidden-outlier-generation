@@ -68,7 +68,7 @@ class WeightedOrigin(OriginMethod):
 # Create a dictionary to map strings to classes
 origin_method_classes = {
     "centroid": CentroidOrigin,
-    "least_outlier": LeastOutlierOrigin,
+    "least outlier": LeastOutlierOrigin,
     "random": RandomOrigin,
     "weighted": WeightedOrigin,
 }
