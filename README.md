@@ -23,7 +23,7 @@ from src.bisect import MultiBisectHOGen
 generator = MultiBisectHOGen(data, outlier_detection_method=OdLOF, seed=42)
 
 # Generate hidden outliers
-outliers = generator.main_multi_bisect(gen_points=100)
+outliers = generator.fit_generate(gen_points=100)
 ```
 
 ---

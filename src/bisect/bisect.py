@@ -9,11 +9,11 @@ import pyod.models.lof
 from joblib import Parallel, delayed
 from numpy import ndarray
 
-from src.bisect import OriginMethod
-from src.bisect import Utils
-from src.bisect.OutlierDetectionMethod import get_outlier_detection_method
-from src.bisect.OutlierResultType import OutlierResultType
-from src.bisect.Utils import subspace_grab, fit_in_all_subspaces
+from src.bisect import originMethod
+from src.bisect import utils
+from src.bisect.outlierDetectionMethod import get_outlier_detection_method
+from src.bisect.outlierResultType import OutlierResultType
+from src.bisect.utils import subspace_grab, fit_in_all_subspaces
 
 # n_jobs = 1
 logging.basicConfig(level=logging.INFO,
@@ -277,11 +277,11 @@ class BisectHOGen:
 
         return outlier_indices
 
-    def main_multi_bisect(self, gen_points: int = 100, check_fast: bool = True,
-                          fixed_interval_length: bool = True, get_origin_type="weighted", verbose: bool = True,
-                          n_jobs: int = 1) -> ndarray:
+    def fit_generate(self, gen_points: int = 100, check_fast: bool = True,
+                     fixed_interval_length: bool = True, get_origin_type="weighted", verbose: bool = True,
+                     n_jobs: int = 1) -> ndarray:
         """
-        Main function to perform multi-bisection algorithm for generating synthetic hidden outliers.
+        Main function to perform bisection algorithm for generating synthetic hidden outliers in parallel.
 
         Args:
             gen_points (int): Number of points to generate.

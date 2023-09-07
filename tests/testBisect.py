@@ -6,7 +6,7 @@ import numpy as np
 
 from src.bisect import outlier_check, interval_check, inference
 from src.bisect import OdPYOD
-from src.bisect import OutlierResultType
+from src.bisect import outlierResultType
 from src.bisect import fit_model, fit_in_all_subspaces
 
 
