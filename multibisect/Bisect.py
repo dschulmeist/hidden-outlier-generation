@@ -5,12 +5,13 @@ import time
 from datetime import datetime
 
 import numpy as np
+import pyod.models.lof
 from joblib import Parallel, delayed
 from numpy import ndarray
 
 from multibisect import Utils, OriginMethod
-from multibisect.OutlierDetectionMethod import OdLOF, OutlierDetectionMethod
-from multibisect.ResultType import ResultType
+from multibisect.OutlierDetectionMethod import OdPYOD, OutlierDetectionMethod, get_outlier_detection_method
+from multibisect.OutlierResultType import OutlierResultType
 from multibisect.Utils import subspace_grab, fit_in_all_subspaces
 
 n_jobs = -2
@@ -25,7 +26,7 @@ DEFAULT_NUMBER_OF_GEN_POINTS = 100
 DEFAULT_C = 0.5
 
 
-def outlier_check(x, full_space, fitted_subspaces, verb=False, fast=True) -> ResultType:
+def outlier_check(x, full_space, fitted_subspaces, verb=False, fast=True) -> OutlierResultType:
     """
     Check if a point is an outlier in any subspace.
 
@@ -37,7 +38,7 @@ def outlier_check(x, full_space, fitted_subspaces, verb=False, fast=True) -> Res
         fitted_subspaces (dict, optional): Dictionary of fitted models.
 
     Returns:
-        ResultType: The type of the point .
+        OutlierResultType: The type of the point .
     """
     subspaces = fitted_subspaces.keys()
     index = np.zeros(len(subspaces))
@@ -59,17 +60,17 @@ def outlier_check(x, full_space, fitted_subspaces, verb=False, fast=True) -> Res
         isOutlierInSubspace = True
 
     if isOutlierInSubspace and (not isOutlierInFullSpace):
-        result = ResultType.H1
+        result = OutlierResultType.H1
     elif (not isOutlierInSubspace) and isOutlierInFullSpace:
-        result = ResultType.H2
+        result = OutlierResultType.H2
     elif isOutlierInSubspace and isOutlierInFullSpace:
         if verb:
             logging.info("x Outside of bounds")
-        result = ResultType.OB
+        result = OutlierResultType.OB
     else:
         if verb:
             logging.info("x in the total acceptance area")
-        result = ResultType.IL
+        result = OutlierResultType.IL
 
     return result
 
@@ -137,10 +138,10 @@ def interval_check(length, direction, origin, full_space, fitted_subspaces, part
     return intervals
 
 
-def multi_bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMBER_OF_ITERATIONS,
-                 is_check_fast=True,
-                 fixed_interval_length=True, full_space=None, fitted_subspaces=None, is_verbose=True) -> \
-        (float, ResultType):
+def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMBER_OF_ITERATIONS,
+           is_check_fast=True,
+           fixed_interval_length=True, full_space=None, fitted_subspaces=None, is_verbose=True) -> \
+        (float, OutlierResultType):
     """
     Multi Bisection algorithm function
 
@@ -178,7 +179,7 @@ def multi_bisect(direction, interval_length, origin, number_of_iterations=DEFAUL
         outlier_indicator = int(check_result.indicator)
         outlier_type = str(check_result.name)
 
-        if (check_result == ResultType.H1) or (check_result == ResultType.H2):
+        if (check_result == OutlierResultType.H1) or (check_result == OutlierResultType.H2):
             return c, check_result
         if outlier_indicator == interval_indicator[1]:
             b = c
@@ -199,14 +200,14 @@ def parallel_routine_generate_point(i, interval_length,
         origin = om.calculate_origin()
 
     direction = Utils.random_unif_on_sphere(2, dims, 1, seed)[0,]
-    bisection_results = multi_bisect(interval_length=interval_length, direction=direction,
-                                     is_check_fast=check_fast,
-                                     fixed_interval_length=fixed_interval_length,
-                                     origin=origin, full_space=full_space, fitted_subspaces=odm_dict,
-                                     is_verbose=verbose)
+    bisection_results = bisect(interval_length=interval_length, direction=direction,
+                               is_check_fast=check_fast,
+                               fixed_interval_length=fixed_interval_length,
+                               origin=origin, full_space=full_space, fitted_subspaces=odm_dict,
+                               is_verbose=verbose)
     hidden_c, outlier_type = bisection_results
 
-    if outlier_type in [ResultType.H1, ResultType.H2]:
+    if outlier_type in [OutlierResultType.H1, OutlierResultType.H2]:
         result_point = hidden_c * direction + origin
         result = np.append(result_point, outlier_type.name)
     else:
@@ -216,9 +217,9 @@ def parallel_routine_generate_point(i, interval_length,
     return result
 
 
-class MultiBisectHOGen:
+class BisectHOGen:
     """
-    MultiBisectHOGen is a class that generates synthetic hidden outliers.
+    BisectHOGen is a class that generates synthetic hidden outliers.
 
     Attributes:
         data (np.array): The dataset to analyze.
@@ -227,13 +228,14 @@ class MultiBisectHOGen:
 
     """
 
-    def __init__(self, data, outlier_detection_method=OdLOF, seed=DEFAULT_SEED):
+    def __init__(self, data, outlier_detection_method=pyod.models.lof.LOF, seed=DEFAULT_SEED):
         """
         Initialize the HOGen class.
 
         Args:
             data (np.array): The dataset to analyze.
-            outlier_detection_method (OutlierDetectionMethod): Method used for outlier detection. Default is LOF
+            outlier_detection_method (OutlierDetectionMethod): Method used for outlier detection.
+             Default is LOF. Every Outlier Detection Method from pyod.models can be used.
             seed (int): Seed for random state. Default is DEFAULT_SEED.
         """
         np.random.seed(seed)
@@ -245,7 +247,7 @@ class MultiBisectHOGen:
         self.seed = seed
         self.data = data
         self.dims = self.data.shape[1]
-        self.outlier_detection_method = outlier_detection_method
+        self.outlier_detection_method = get_outlier_detection_method(outlier_detection_method)
         self.fitted_subspaces_dict = None
         self.outlier_indices = None
         self.full_space = tuple(np.arange(self.data.shape[1]))

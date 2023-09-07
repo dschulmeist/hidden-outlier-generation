@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class ResultType(Enum):
+class OutlierResultType(Enum):
     """
     Enum for the possible result types for the outlier check.
 

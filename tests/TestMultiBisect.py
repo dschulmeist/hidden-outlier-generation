@@ -4,9 +4,9 @@ import unittest
 
 import numpy as np
 
-from multibisect.MultiBisect import outlier_check, interval_check, inference
-from multibisect.OutlierDetectionMethod import OdLOF
-from multibisect.ResultType import ResultType
+from multibisect.Bisect import outlier_check, interval_check, inference
+from multibisect.OutlierDetectionMethod import OdPYOD
+from multibisect.OutlierResultType import OutlierResultType
 from multibisect.Utils import fit_model, fit_in_all_subspaces
 
 
@@ -19,7 +19,7 @@ class TestMultiBisectBasic(unittest.TestCase):
         self.tempdir = "./tempdir"  # Dummy temporary directory
         self.subspace = (0, 1)  # Dummy subspace
         self.full_space = (0, 1, 2, 3, 4)  # Dummy full space
-        self.outlier_detection_method = OdLOF
+        self.outlier_detection_method = OdPYOD
 
         self.fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir,
                                                      seed=self.seed, subspace_limit=12, n_jobs=-2)
@@ -37,14 +37,14 @@ class TestMultiBisectBasic(unittest.TestCase):
     def test_fit_model(self):
         subspace, model = fit_model(self.subspace, self.data, self.outlier_detection_method, self.tempdir)
         self.assertEqual(subspace, self.subspace)
-        self.assertIsInstance(model, OdLOF)
+        self.assertIsInstance(model, OdPYOD)
 
     def test_outlier_check(self):
         # fitted_subspaces = fit_in_all_subspaces(self.outlier_detection_method, self.data, self.tempdir, seed=self.seed)
 
         result = outlier_check(self.data[0], self.full_space,
                                fitted_subspaces=self.fitted_subspaces, verb=False, fast=True)
-        self.assertIsInstance(result, ResultType)
+        self.assertIsInstance(result, OutlierResultType)
 
     def test_interval_check(self):
         length = 5

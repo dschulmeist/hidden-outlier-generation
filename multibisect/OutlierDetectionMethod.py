@@ -3,8 +3,10 @@ import pickle
 from abc import abstractmethod, ABC
 from datetime import time
 
+from pyod.models.base import BaseDetector
 from pyod.models import deep_svdd, abod, ecod
 from pyod.models.lof import LOF
+import pyod.models
 from scipy.spatial import distance
 import numpy as np
 from scipy.stats import chi2
@@ -29,22 +31,34 @@ class OutlierDetectionMethod(ABC):
         pass
 
 
-class OdLOF(OutlierDetectionMethod):
+def get_outlier_detection_method(method):
+    if pyod.models.base.BaseDetector.__subclasscheck__(method):
+        OdPYOD.model = method
+        return OdPYOD
+    elif method == "mahalanobis":
+        return ODmahalanobis
+    else:
+        raise Exception("No such outlier detection method: " + str(method))
+
+
+# class for pyod based outlier detection methods
+class OdPYOD(OutlierDetectionMethod):
+    model = None
 
     def __init__(self, subspace, tempdir):
         super().__init__()
-        self.model = None
+
         self.tempdir = tempdir
         self.subspace = subspace
-        self.name = "LOF_on_" + str(hash(subspace))
+        self.name = "ODM_on_" + str(hash(subspace))
         self.location = f'{self.tempdir}/{self.name}.pkl'
 
     def fit(self, data):
-        model = LOF()
-        model.fit(data)
+        init_model = OdPYOD.model()
+        init_model.fit(data)
         self.fitted = True
-        self.dump(model)
-        del model
+        self.dump(init_model)
+        del init_model
 
     def dump(self, model):
         # check whether the directory tempdir exists or not
@@ -56,7 +70,7 @@ class OdLOF(OutlierDetectionMethod):
             pickle.dump(model, f)
         del model
 
-    def get_model(self) -> LOF:
+    def get_model(self) -> BaseDetector:
         # load model from disk
         with open(self.location, 'rb') as f:
             loaded_model = pickle.load(f)
@@ -65,27 +79,11 @@ class OdLOF(OutlierDetectionMethod):
     def predict(self, x) -> bool:
         if not self.fitted:
             raise "trying to predict OdLOF that was not fitted yet"
-        model = self.get_model()
+        fitted_model = self.get_model()
         x = x.reshape(1, -1)
-        decision = bool(model.predict(x)[0, ])
-        del model
+        decision = bool(fitted_model.predict(x)[0,])
+        del fitted_model
         return decision
-
-
-class OdDeepSVDD(OutlierDetectionMethod):
-    def __init__(self):
-        super().__init__()
-        self.model = deep_svdd.DeepSVDD()
-
-    name = "DeepSVDD"
-
-    def fit(self, data):
-        self.model.fit(data)
-        self.fitted = True
-        pass
-
-    def predict(self, x):
-        pass
 
 
 class ODmahalanobis(OutlierDetectionMethod):
@@ -119,5 +117,4 @@ class ODmahalanobis(OutlierDetectionMethod):
         """
         return chi2.ppf(0.95, df=self.shape[1])  # Updated to work with numpy array
 
-
-outl_detect_methods = [LOF, deep_svdd.DeepSVDD, abod.ABOD, ecod.ECOD]
+#%%
