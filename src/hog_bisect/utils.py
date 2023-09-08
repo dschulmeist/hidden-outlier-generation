@@ -104,6 +104,7 @@ def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit
         subspaces = gen_rand_subspaces(dims, subspace_limit, include_all_attr=True, seed=seed)
     # Log information
     logging.info("Fitting all subspaces....")
+    logging.debug(f"number of jobs in parallel: {n_jobs}")
     # Parallel execution for model fitting
     results = Parallel(n_jobs=n_jobs, timeout=FITTING_TIMEOUT_TIME)(
         delayed(fit_model)(subspace, data, outlier_detection_method, tempdir) for subspace in subspaces)
@@ -116,5 +117,5 @@ def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit
     fitted_subspaces[full_space].fit(data)
     del results  # Free up memory
 
-    logging.info(f"Set of fitted Subspaces size: {len(fitted_subspaces)}")
+    logging.info(f"number of fitted subspaces including full space: {len(fitted_subspaces)}")
     return fitted_subspaces
