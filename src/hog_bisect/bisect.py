@@ -9,17 +9,16 @@ import pyod.models.lof
 from joblib import Parallel, delayed
 from numpy import ndarray
 
-from src.hog_bisect import origin_method
+from hog_bisect import origin_method
 from src.hog_bisect import utils
 from src.hog_bisect.outlier_detection_method import get_outlier_detection_method
 from src.hog_bisect.outlier_result_type import OutlierResultType
 from src.hog_bisect.utils import subspace_grab, fit_in_all_subspaces
 
-# n_jobs = 1
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-SUBSPACE_LIMIT = 11
+DEFAULT_MAX_DIMENSIONS = 11
 FITTING_TIMEOUT_TIME = 60
 DEFAULT_SEED = 5
 DEFAULT_NUMBER_OF_ITERATIONS = 30
@@ -54,7 +53,7 @@ def outlier_check(x, full_space, fitted_subspaces, verb=False, fast=True) -> Out
         if inference(subspace_grab(subspace, x.reshape(1, x.shape[0])), subspace, fitted_subspaces=fitted_subspaces):
             index[j] = 1
 
-            if fast:  # remove
+            if fast:
                 break
 
     if np.sum(index[:-1]) > 0:
@@ -76,7 +75,14 @@ def outlier_check(x, full_space, fitted_subspaces, verb=False, fast=True) -> Out
     return result
 
 
-def inference(x, subspace, fitted_subspaces=None) -> bool:
+def validate_subspace(subspace, fitted_subspaces):
+    if not isinstance(subspace, tuple):
+        raise ValueError(f"Subspace needs to be a tuple, got {type(subspace)}")
+    if subspace not in fitted_subspaces:
+        raise ValueError(f"Subspace {subspace} not in the dictionary of fitted subspaces")
+
+
+def inference(x, subspace, fitted_subspaces) -> bool:
     """
     Infer whether a given data point is an outlier in the specified subspace.
 
@@ -88,53 +94,36 @@ def inference(x, subspace, fitted_subspaces=None) -> bool:
     Returns:
         bool: True if the data point is an outlier, False otherwise.
     """
-    if not isinstance(subspace, tuple):
-        print("Subspace: ", subspace, type(subspace), " is not a tuple")
-        raise ValueError(
-            "Error in Code, subspace needs to be a tuple")
-
-    if subspace not in fitted_subspaces.keys():
-        logging.info("type of subsp: ", type(subspace), " subspace: ", list(subspace))
-        raise ValueError(f"Subspace {subspace} not in the dictionary of fitted subspaces")
+    validate_subspace(subspace, fitted_subspaces)
     return bool(fitted_subspaces[subspace].predict(x))
 
 
+def get_segmentation_points(length, parts):
+    return np.linspace(0, length, num=parts)
+
+
 def interval_check(length, direction, origin, full_space, fitted_subspaces, parts=5):
-    """
-    Interval Refining function
-
-    Breaks the interval in the selected number of parts
-    (defaults to 5) and checks if each part is an Outlier or an Inlier
-    in the global space. After that it stores each sub-interval
-    in a list
-
-    Arguments:
-    length: Length of the original interval
-    method: ODM
-    direction: Directional vector selected
-    origin: origin
-    parts: Number of parts to which cut the interval
-    fitted_subspaces: a dictionary containing fitted Subspaces (OutlierDetectionMethod)
-    """
-
-    segmentation_points = np.linspace(0, length, num=parts)
+    segmentation_points = get_segmentation_points(length, parts)
     check = np.full(len(segmentation_points), -1)
-    # print("checking intervals in the global space")
+
     for i, c in enumerate(segmentation_points):
+        point_to_check = c * direction + origin
+        check[i] = 1 if inference(point_to_check, full_space, fitted_subspaces) else 0
 
-        if inference(c * direction + origin, subspace=full_space, fitted_subspaces=fitted_subspaces):
-            check[i] = 1
+    return construct_intervals(segmentation_points, check)
 
+
+def construct_intervals(segmentation_points, check):
     intervals = []
     previous = check[0]
 
-    for i in range(len(check)):
+    for i in range(1, len(check)):
         if check[i] != previous:
             intervals.append([(segmentation_points[i - 1], segmentation_points[i]), (check[i - 1], check[i])])
         previous = check[i]
 
-    if len(intervals) == 0:
-        intervals.append([(segmentation_points[0], segmentation_points[-1]), (check[-1], check[-1])])
+    if not intervals:
+        intervals.append([(segmentation_points[0], segmentation_points[-1]), (check[0], check[-1])])
 
     return intervals
 
@@ -229,7 +218,8 @@ class BisectHOGen:
 
     """
 
-    def __init__(self, data, outlier_detection_method=pyod.models.lof.LOF, seed=DEFAULT_SEED):
+    def __init__(self, data, outlier_detection_method=pyod.models.lof.LOF, seed=DEFAULT_SEED
+                 , max_dimensions=DEFAULT_MAX_DIMENSIONS):
         """
         Initialize the HOGen class.
 
@@ -253,6 +243,7 @@ class BisectHOGen:
         self.outlier_indices = None
         self.full_space = tuple(np.arange(self.data.shape[1]))
         self.exec_time = None
+        self.max_dimensions = max_dimensions
 
     def get_outlier_indices(self):
         """
@@ -298,13 +289,13 @@ class BisectHOGen:
         """
         self.start_time = time.time()
         self.fitted_subspaces_dict = fit_in_all_subspaces(self.outlier_detection_method, self.data, seed=self.seed,
-                                                          tempdir=self.tempFName, subspace_limit=SUBSPACE_LIMIT,
+                                                          tempdir=self.tempFName, subspace_limit=self.max_dimensions,
                                                           n_jobs=n_jobs)
         self.outlier_indices = self.get_outlier_indices()
         seed = self.seed
         length = np.max(np.sqrt(np.sum(self.data ** 2, axis=1)))  # length of the largest Vector in the dataset
-        origin_method = originMethod.get_origin(self.data, self.outlier_indices, get_origin_type)
-        origin = origin_method.calculate_origin()
+        originmethod = origin_method.get_origin(self.data, self.outlier_indices, get_origin_type)
+        origin = originmethod.calculate_origin()
         fitted_subspaces = self.fitted_subspaces_dict
         full_space = self.full_space
         print("Generating {} hidden outlier points...".format(gen_points))
@@ -324,7 +315,7 @@ class BisectHOGen:
                             fitted_subspaces,
                             get_origin_type,
                             seed,
-                            origin_method,
+                            originmethod,
                             verbose
                         )
                         for i in range(gen_points)))
