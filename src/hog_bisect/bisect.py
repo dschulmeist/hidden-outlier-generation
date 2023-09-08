@@ -298,9 +298,9 @@ class BisectHOGen:
         origin = originmethod.calculate_origin()
         fitted_subspaces = self.fitted_subspaces_dict
         full_space = self.full_space
-        print("Generating {} hidden outlier points...".format(gen_points))
+        print("Generating {} hidden outlier points... ".format(gen_points))
 
-        with Parallel(n_jobs=n_jobs, timeout=60) as parallel:
+        with Parallel(n_jobs=n_jobs, timeout=FITTING_TIMEOUT_TIME) as parallel:
             print("n jobs: ", parallel.n_jobs)
             bisection_results = \
                 np.array(
