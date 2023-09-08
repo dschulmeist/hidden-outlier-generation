@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 import pyod
 
-from src.hog_bisect.hog_bisect import outlier_check, interval_check, inference
+from src.hog_bisect.bisect import outlier_check, interval_check, inference
 from src.hog_bisect.outlier_detection_method import OdPYOD
 from src.hog_bisect import outlier_result_type
 from src.hog_bisect.utils import fit_model, fit_in_all_subspaces

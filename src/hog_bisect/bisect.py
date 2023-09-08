@@ -162,7 +162,7 @@ def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMB
         interval_length = interval_length + np.random.uniform(-interval_length / 2, interval_length)
     interval = interval_check(interval_length, direction, origin, full_space=full_space,
                               fitted_subspaces=fitted_subspaces)
-    choice = np.random.choice(len(interval), 1)[0, ]
+    choice = np.random.choice(len(interval), 1)[0,]
     interval = interval[choice]
     interval_indicator = interval[1]
     interval = interval[0]
@@ -200,7 +200,7 @@ def parallel_routine_generate_point(i, interval_length,
     if get_origin_type in ["random", "weighted"]:
         origin = om.calculate_origin()
 
-    direction = utils.random_unif_on_sphere(2, dims, 1, seed)[0, ]
+    direction = utils.random_unif_on_sphere(2, dims, 1, seed)[0,]
     bisection_results = bisect(interval_length=interval_length, direction=direction,
                                is_check_fast=check_fast,
                                fixed_interval_length=fixed_interval_length,
@@ -242,7 +242,7 @@ class BisectHOGen:
         np.random.seed(seed)
         self.hidden_x_type = None
         self.hidden_x_list = None
-        self.start_time = time.time()
+        self.start_time = None
         self.tempFName = f'HOGTemp{datetime.now().strftime("%Y%m%d%H%M%S")}_{seed}'
         self.x_list = None
         self.seed = seed
@@ -278,7 +278,7 @@ class BisectHOGen:
         return outlier_indices
 
     def fit_generate(self, gen_points: int = 100, check_fast: bool = True,
-                     fixed_interval_length: bool = True, get_origin_type="weighted", verbose: bool = True,
+                     fixed_interval_length: bool = True, get_origin_type: str = "weighted", verbose: bool = False,
                      n_jobs: int = 1) -> ndarray:
         """
         Main function to perform bisection algorithm for generating synthetic hidden outliers in parallel.

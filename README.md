@@ -9,7 +9,7 @@ This repository hosts a Python-based hidden outlier generator leveraging the bis
 To install, clone this repository:
 
 \```bash
-git clone <repository_url>
+git clone https://github.com/dschulmeist/hidden-outlier-generation
 \```
 
 ## Usage
@@ -17,7 +17,7 @@ git clone <repository_url>
 Here's how to import and use the main function to generate synthetic hidden outliers:
 
 \```python
-from src.bisect import BisectHOGen
+from hog_bisect.bisect import BisectHOGen
 
 # Initialize the generator
 generator = BisectHOGen(data, outlier_detection_method=pyod.models.lof.LOF, seed=42)
