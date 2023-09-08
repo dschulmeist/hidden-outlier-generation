@@ -1,7 +1,7 @@
 import logging
 import random
 from itertools import chain, combinations
-from src.bisect.outlierDetectionMethod import OutlierDetectionMethod, get_outlier_detection_method
+from src.hog_bisect.outlier_detection_method import OutlierDetectionMethod, get_outlier_detection_method
 
 import numpy as np
 from joblib import Parallel, delayed

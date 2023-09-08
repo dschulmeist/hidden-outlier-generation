@@ -5,11 +5,11 @@ import unittest
 import numpy as np
 import pyod
 
-from src.bisect.bisect import outlier_check, interval_check, inference
-from src.bisect.outlierDetectionMethod import OdPYOD
-from src.bisect import outlierResultType
-from src.bisect.utils import fit_model, fit_in_all_subspaces
-from src.bisect.outlierResultType import OutlierResultType
+from src.hog_bisect.hog_bisect import outlier_check, interval_check, inference
+from src.hog_bisect.outlier_detection_method import OdPYOD
+from src.hog_bisect import outlier_result_type
+from src.hog_bisect.utils import fit_model, fit_in_all_subspaces
+from src.hog_bisect.outlier_result_type import OutlierResultType
 
 
 class TestBisectBasic(unittest.TestCase):
