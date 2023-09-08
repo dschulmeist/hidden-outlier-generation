@@ -1,80 +1,94 @@
-# Multi-Bisect Hidden Outlier Generation
+# Hidden Outlier Generator with Bisection Algorithm
 
 ## Description
 
-This repository contains a Python implementation of a synthetic hidden outlier generation algorithm using the Multi-Bisection method. It also includes functions to fit outlier detection models in all possible subspaces of the data and to perform interval checks.
-
----
+This repository hosts a Python-based hidden outlier generator leveraging the bisection algorithm. The project offers various functionalities, including fitting outlier detection models in every potential data subspace and performing interval assessments.
 
 ## Installation
 
-To install the package, you can simply clone this GitHub repository.
+To install, clone this repository:
 
----
+\```bash
+git clone <repository_url>
+\```
 
 ## Usage
 
-Import the module and call the `main_multi_bisect()` method:
+Here's how to import and use the main function to generate synthetic hidden outliers:
 
-```python
-from src.hog_bisect import MultiBisectHOGen
+\```python
+from src.bisect import BisectHOGen
 
-# Initialize
-generator = MultiBisectHOGen(data, outlier_detection_method=OdLOF, seed=42)
+# Initialize the generator
+generator = BisectHOGen(data, outlier_detection_method=pyod.models.lof.LOF, seed=42)
 
 # Generate hidden outliers
 outliers = generator.fit_generate(gen_points=100)
-```
-
----
+\```
 
 ## Features
 
-### `fit_model()`
+### Methods and Classes
 
-**Fits a model for a given subspace.**
+#### `fit_generate()`
 
-**Args:**
-- `subspace` (tuple): The subspace to fit the model on.
-- `data` (ndarray): The dataset.
-- `outlier_detection_method` (class): The outlier detection model class.
-- `tempdir` (str): Temporary directory for storing data.
+Generate synthetic hidden outliers using a bisection algorithm.
 
-**Returns:**
-- tuple: The subspace and the fitted model.
+- **Args:**
+    - `gen_points` (int): Number of synthetic points to generate.
+    - `check_fast` (bool): Fast check flag.
+    - `fixed_interval_length` (bool): Flag for fixed interval length.
+    - `get_origin_type` (str): Method to determine the origin.
+    - `verbose` (bool): Verbose flag.
+    - `n_jobs` (int): Number of parallel jobs.
 
----
+- **Returns:**
+    - ndarray: An array containing generated hidden outliers.
 
-### `fit_in_all_subspaces()`
+#### `BisectHOGen`
 
-**Fits models for all possible subspaces of the given data.**
+A class for generating synthetic hidden outliers.
 
----
+### Utility Functions
 
-### `outlier_check()`
+#### `inference()`
 
-**Checks if a point is an outlier in any subspace.**
+Determine if a point is an outlier within a given subspace.
 
----
+#### `outlier_check()`
 
-### `inference()`
+Check for outliers in any subspace.
 
-**Infer whether a given data point is an outlier in the specified subspace.**
+#### `interval_check()`
 
----
+Perform interval assessments to determine outliers and inliers.
 
-### `interval_check()`
+#### `bisect()`
 
-**Checks intervals for inliers and outliers.**
+Apply the multi-bisection algorithm to discover hidden outliers.
 
----
+## Code Structure
 
-### `multi_bisect()`
+### `BisectHOGen` Class
 
-**Performs the multi-bisection algorithm to find hidden outliers.**
+The `BisectHOGen` class initializes the generator and contains utility methods.
 
----
+\```python
+class BisectHOGen:
+...
+\```
 
-### `MultiBisectHOGen`
+### Function Definitions
 
-**Class that initializes the algorithm and contains utility methods.**
+Functions like `outlier_check`, `inference`, `interval_check`, and `bisect` are defined to perform various tasks in the outlier detection and generation process.
+
+\```python
+def outlier_check(...):
+...
+def inference(...):
+...
+def interval_check(...):
+...
+def bisect(...):
+...
+\```
