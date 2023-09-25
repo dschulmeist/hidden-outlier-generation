@@ -225,8 +225,8 @@ def parallel_routine_generate_point(i, interval_length,
     else:
         result_point = np.zeros((1, dims))
         result = np.append(result_point, outlier_type.name)
-    if i % 200 == 0:
-        print(f"new origin: {origin}")
+    if i % 100 == 0:
+        #print(f"new origin: {origin}")
         logging.info(f"Progress: {i} points generated")
         # logging.debug(f" current result: {result}")
     return result
