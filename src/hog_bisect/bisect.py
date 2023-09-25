@@ -24,8 +24,7 @@ DEFAULT_NUMBER_OF_GEN_POINTS = 100
 DEFAULT_C = 0.5
 DEFAULT_NUMBER_OF_PARTS = 20
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def outlier_check(x: ndarray, full_space: tuple, fitted_subspaces: dict, verb=False, fast=True) -> OutlierResultType:
