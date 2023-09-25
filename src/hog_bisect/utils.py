@@ -1,7 +1,7 @@
 import logging
 import random
 from itertools import chain, combinations
-from src.hog_bisect.outlier_detection_method import OutlierDetectionMethod, get_outlier_detection_method
+from hog_bisect.outlier_detection_method import OutlierDetectionMethod, get_outlier_detection_method
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -11,9 +11,9 @@ FITTING_TIMEOUT_TIME = 60
 DEFAULT_SEED = 5
 
 
-def random_unif_on_sphere(number, dimensions, r, random_state=5):
+def random_unif_on_sphere(number, dimensions, r=1, random_state=5):
     normal_deviates = norm.rvs(size=(number, dimensions), random_state=random_state)
-    radius = np.sqrt((normal_deviates ** 2).sum(axis=0))
+    radius = np.sqrt((normal_deviates ** 2).sum(axis=1))[:, np.newaxis]
     points = normal_deviates / radius
     return points * r
 

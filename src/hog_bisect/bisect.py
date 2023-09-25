@@ -11,10 +11,10 @@ from joblib import Parallel, delayed
 from numpy import ndarray
 
 from hog_bisect import origin_method
-from src.hog_bisect import utils
-from src.hog_bisect.outlier_detection_method import get_outlier_detection_method
-from src.hog_bisect.outlier_result_type import OutlierResultType
-from src.hog_bisect.utils import subspace_grab, fit_in_all_subspaces
+from hog_bisect import utils
+from hog_bisect.outlier_detection_method import get_outlier_detection_method
+from hog_bisect.outlier_result_type import OutlierResultType
+from hog_bisect.utils import subspace_grab, fit_in_all_subspaces
 
 DEFAULT_MAX_DIMENSIONS = 11
 FITTING_TIMEOUT_TIME = 60
@@ -53,9 +53,11 @@ def outlier_check(x: ndarray, full_space: tuple, fitted_subspaces: dict, verb=Fa
         if subspace == full_space or (len(subspace) == len(full_space)):
             continue
         if inference(subspace_grab(subspace, x.reshape(1, x.shape[0])), subspace, fitted_subspaces=fitted_subspaces):
+
             index[j] = 1
             if not isOutlierInFullSpace:
-                logging.debug(f"found x, outlier in {subspace} but not in full space")
+                # logging.debug(f"found x, outlier in {subspace} but not in full space")
+                pass
             if fast:
                 break
 
@@ -63,7 +65,7 @@ def outlier_check(x: ndarray, full_space: tuple, fitted_subspaces: dict, verb=Fa
         isOutlierInSubspace = True
 
     if isOutlierInSubspace and (not isOutlierInFullSpace):
-        logging.debug("found x in the hidden outlier area H1")
+        # logging.debug("found x in the hidden outlier area H1")
         result = OutlierResultType.H1
     elif (not isOutlierInSubspace) and isOutlierInFullSpace:
         logging.debug("found x in the hidden outlier area H2")
@@ -113,9 +115,20 @@ def interval_check(length, direction, origin, full_space, fitted_subspaces, part
 
     for i, c in enumerate(segmentation_points):
         point_to_check = c * direction + origin
-        check_if_interval_is_outlier[i] = 1 if inference(point_to_check, full_space, fitted_subspaces) else 0
+        check_if_interval_is_outlier[i] = 1 if inference(point_to_check, full_space, fitted_subspaces) else -1
 
-    return construct_intervals(segmentation_points, check_if_interval_is_outlier)
+    intervals = construct_intervals(segmentation_points, check_if_interval_is_outlier)
+
+    if not intervals:
+        if check_if_interval_is_outlier[0] == 1:
+            logging.debug("No sub-intervals found, returning the whole interval")
+            return [(segmentation_points[0], segmentation_points[-1]),
+                    (check_if_interval_is_outlier[0], check_if_interval_is_outlier[-1])]
+        else:
+            logging.debug("No sub-intervals found, increasing interval length")
+        return interval_check(length * 2, direction, origin, full_space, fitted_subspaces, parts=parts)
+
+    return intervals
 
 
 def construct_intervals(segmentation_points, check_if_interval_is_outlier):
@@ -128,10 +141,11 @@ def construct_intervals(segmentation_points, check_if_interval_is_outlier):
                               (check_if_interval_is_outlier[i - 1], check_if_interval_is_outlier[i])])
         previous = check_if_interval_is_outlier[i]
 
-    if not intervals:
-        logging.debug("No sub-intervals found, returning the whole interval")
-        intervals.append([(segmentation_points[0], segmentation_points[-1]),
-                          (check_if_interval_is_outlier[0], check_if_interval_is_outlier[-1])])
+    # if not intervals:
+    #     return []
+    #     logging.debug("No sub-intervals found, returning the whole interval")
+    #     intervals.append([(segmentation_points[0], segmentation_points[-1]),
+    #                       (check_if_interval_is_outlier[0], check_if_interval_is_outlier[-1])])
 
     return intervals
 
@@ -157,12 +171,12 @@ def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMB
     c = DEFAULT_C
     if not is_fixed_interval_length:
         interval_length = interval_length + np.random.uniform(-interval_length / 2, interval_length)
-    interval = interval_check(interval_length, direction, origin, full_space=full_space,
-                              fitted_subspaces=fitted_subspaces)
-    choice = np.random.choice(len(interval), 1)[0,]
-    interval = interval[choice]
-    interval_indicator = interval[1]
-    interval = interval[0]
+    found_sub_intervals = interval_check(interval_length, direction, origin, full_space=full_space,
+                                         fitted_subspaces=fitted_subspaces)
+    choice = np.random.choice(len(found_sub_intervals), 1)[0,]
+    chosen_interval = found_sub_intervals[choice]
+    interval_indicator = chosen_interval[1]
+    interval = chosen_interval[0]
 
     a = interval[0]
     b = interval[1]
@@ -198,6 +212,7 @@ def parallel_routine_generate_point(i, interval_length,
         origin = om.calculate_origin()
 
     direction = utils.random_unif_on_sphere(2, dims, 1, seed)[0,]
+    # print(f"direction: {direction}")
     bisection_results = bisect(interval_length=interval_length, direction=direction,
                                is_check_fast=check_fast,
                                is_fixed_interval_length=fixed_interval_length,
@@ -211,9 +226,10 @@ def parallel_routine_generate_point(i, interval_length,
     else:
         result_point = np.zeros((1, dims))
         result = np.append(result_point, outlier_type.name)
-    if i % 100 == 0:
+    if i % 200 == 0:
+        print(f"new origin: {origin}")
         logging.info(f"Progress: {i} points generated")
-        logging.debug(f" current result: {result}")
+        # logging.debug(f" current result: {result}")
     return result
 
 
