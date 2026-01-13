@@ -1,164 +1,141 @@
-# Hidden Outlier Generator with Bisection Algorithm
+# Hidden Outlier Generation
 
-## Description
+A Python library for generating synthetic hidden outliers using the bisection algorithm.
 
-This repository hosts a Python-based hidden outlier generator leveraging the bisect algorithm. 
+## What are Hidden Outliers?
 
+Hidden outliers are data points that exhibit different outlier behavior depending on which feature subspace you examine:
+
+- **H1 (Subspace Hidden)**: Outlier in some feature subspace but NOT in the full feature space
+- **H2 (Full-space Hidden)**: Outlier in the full feature space but NOT in any subspace
+
+These are useful for benchmarking outlier detection algorithms, especially subspace-aware methods.
 
 ## Installation
 
-To install, clone this repository:
+```bash
+pip install hidden-outlier-generation
+```
 
-\```bash
-git clone https://github.com/dschulmeist/hidden-outlier-generation
-\```
+Or with [uv](https://github.com/astral-sh/uv):
 
-## Usage
+```bash
+uv add hidden-outlier-generation
+```
 
-Here's how to import and use the main function to generate synthetic hidden outliers:
+## Quick Start
 
-\```python
-from hog_bisect.bisect import BisectHOGen
+```python
+import numpy as np
+from pyod.models.lof import LOF
+from hog_bisect import BisectHOGen
 
-# Initialize the generator
-generator = BisectHOGen(data, outlier_detection_method=pyod.models.lof.LOF, seed=42)
+# Your dataset
+data = np.random.randn(200, 5)
+
+# Create generator
+generator = BisectHOGen(
+    data=data,
+    outlier_detection_method=LOF,
+    seed=42
+)
 
 # Generate hidden outliers
-outliers = generator.fit_generate(gen_points=100)
-\```
+hidden_outliers = generator.fit_generate(gen_points=50)
+
+print(f"Generated {len(hidden_outliers)} hidden outliers")
+generator.print_summary()
+```
 
 ## Features
 
-### Methods and Classes
+- **Multiple origin strategies**: centroid, least outlier, random, weighted
+- **Flexible detection methods**: Any PyOD detector (LOF, KNN, IForest, etc.)
+- **Parallel processing**: Use `n_jobs=-1` for multi-core execution
+- **Reproducible**: Seed parameter for deterministic results
+- **Type hints**: Full typing support with py.typed marker
 
-#### `fit_generate()`
+## API Reference
 
-Generate synthetic hidden outliers using a bisection algorithm.
+### BisectHOGen
 
-- **Args:**
-    - `gen_points` (int): Number of synthetic points to generate.
-    - `check_fast` (bool): Fast check flag.
-    - `fixed_interval_length` (bool): Flag for fixed interval length.
-    - `get_origin_type` (str): Method to determine the origin.
-    - `verbose` (bool): Verbose flag.
-    - `n_jobs` (int): Number of parallel jobs.
+```python
+BisectHOGen(
+    data: np.ndarray,                    # Input dataset (n_samples, n_features)
+    outlier_detection_method=LOF,        # PyOD detector class
+    seed: int = 5,                       # Random seed
+    max_dimensions: int = 11             # Threshold for random subspace sampling
+)
+```
 
-- **Returns:**
-    - ndarray: An array containing generated hidden outliers.
+### fit_generate()
 
-#### `BisectHOGen`
+```python
+generator.fit_generate(
+    gen_points: int = 100,               # Number of candidate points
+    check_fast: bool = True,             # Fast subspace checking
+    is_fixed_interval_length: bool = True,
+    get_origin_type: str = "weighted",   # Origin strategy
+    verbose: bool = False,
+    n_jobs: int = 1                      # Parallel workers (-1 for all cores)
+) -> np.ndarray                          # Array of hidden outliers
+```
 
-A class for generating synthetic hidden outliers.
+### Origin Types
 
-## Code Structure
+| Type | Description |
+|------|-------------|
+| `"centroid"` | Use data mean as origin (deterministic) |
+| `"least outlier"` | Use most normal point (stable) |
+| `"random"` | Random inlier each iteration (diverse) |
+| `"weighted"` | Weighted random toward normal points (recommended) |
 
-### `BisectHOGen` Class
+## Examples
 
-The `BisectHOGen` class initializes the generator and contains utility methods.
+The repository includes example scripts in the `examples/` directory:
 
-\```python
-class BisectHOGen:
-...
-\```
+```bash
+# Clone the repo to access examples
+git clone https://github.com/dschulmeist/hidden-outlier-generation
+cd hidden-outlier-generation
 
-### Function Definitions
+# Run examples
+python examples/basic_usage.py
+python examples/compare_origins.py
+python examples/compare_detectors.py
+python examples/visualize_outliers.py  # requires matplotlib
+```
 
-Functions like `outlier_check`, `inference`, `interval_check`, and `bisect` are defined to perform various tasks in the outlier detection and generation process.
+## Development
 
-\```python
-def outlier_check(...):
-...
-def inference(...):
-...
-def interval_check(...):
-...
-def bisect(...):
-...
-\```
+```bash
+# Clone and install with dev dependencies
+git clone https://github.com/dschulmeist/hidden-outlier-generation
+cd hidden-outlier-generation
+uv sync --all-extras
 
-# Hidden Outlier Generator with Bisection Algorithm
+# Run tests
+uv run pytest
 
-## Description
+# Run linting
+uv run ruff check
+```
 
-This repository hosts a Python-based hidden outlier generator leveraging the bisect algorithm.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and release process.
 
-## Utility Functions
+## License
 
-### `random_unif_on_sphere(number, dimensions, r, random_state=5)`
+MIT License - see [LICENSE](LICENSE) for details.
 
-Generates uniformly distributed random points on a sphere.
+## Citation
 
-- **Args:**
-  - `number` (int): Number of points to generate.
-  - `dimensions` (int): The dimensions of the sphere.
-  - `r` (float): Radius of the sphere.
-  - `random_state` (int, optional): Random seed.
+If you use this library in your research, please cite:
 
-- **Returns:**
-  - ndarray: An array containing the generated points on the sphere.
-
-### `gen_powerset(dims)`
-
-Generates the power set of dimensions, which are sets containing all possible combinations of dimensions.
-
-- **Args:**
-  - `dims` (int): Number of dimensions.
-
-- **Returns:**
-  - set: The power set of dimensions.
-
-### `subspace_grab(indices, data)`
-
-Grabs a subspace of the data based on the specified indices.
-
-- **Args:**
-  - `indices` (list or tuple): Indices of the attributes for the subspace.
-  - `data` (ndarray): The original data.
-
-- **Returns:**
-  - ndarray: The subspace data.
-
-### `gen_rand_subspaces(dims, upper_limit, include_all_attr=True, seed=5)`
-
-Generates random subspaces based on given dimensions.
-
-- **Args:**
-  - `dims` (int): Number of dimensions.
-  - `upper_limit` (int): Upper limit for the number of subspaces.
-  - `include_all_attr` (bool, optional): Whether to include all attributes.
-  - `seed` (int, optional): Random seed.
-
-- **Returns:**
-  - set: The generated subspaces.
-
-### `fit_model(subspace, data, outlier_detection_method, tempdir)`
-
-Fits an outlier detection model for a given subspace.
-
-- **Args:**
-  - `subspace` (tuple): The subspace to fit the model on.
-  - `data` (ndarray): The dataset.
-  - `outlier_detection_method` (class): The outlier detection model class.
-  - `tempdir` (str): Temporary directory for storing data.
-
-- **Returns:**
-  - tuple: The subspace and the fitted model.
-
-### `fit_in_all_subspaces(...)`
-
-Fits models for all possible subspaces of the given data.
-
-- **Args:**
-  - `outlier_detection_method` (class): The outlier detection model class.
-  - `data` (ndarray): The dataset.
-  - `tempdir` (str): Temporary directory for storing data.
-  - `subspace_limit` (int): 2^subspace_limit will be the maximum amount of subspaces fitted.
-  - `seed` (int, optional): Seed for random number generator.
-  - `n_jobs` (int): Number of cores to use.
-
-- **Returns:**
-  - dict: Dictionary of models fitted on different subspaces.
-
-
-
-
+```bibtex
+@software{hidden_outlier_generation,
+  title = {Hidden Outlier Generation},
+  author = {Schulmeister, Daniel},
+  url = {https://github.com/dschulmeist/hidden-outlier-generation},
+  year = {2024}
+}
+```
