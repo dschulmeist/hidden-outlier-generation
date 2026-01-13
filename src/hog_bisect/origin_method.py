@@ -4,11 +4,9 @@ from enum import Enum
 
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
-from multiprocessing import cpu_count, Manager
 
 
 class OriginMethod(ABC):
-
     def __init__(self, data, out_indicator, class_type):
         self.class_type = class_type
         self.data = data
@@ -66,7 +64,9 @@ class WeightedOrigin(OriginMethod):
         self.out_df_length = self.out_df.shape[0]
 
     def calculate_origin(self):
-        index = np.random.choice(self.out_df_length, p=self.proba_vector_out / self.proba_vector_out_sum)
+        index = np.random.choice(
+            self.out_df_length, p=self.proba_vector_out / self.proba_vector_out_sum
+        )
         return self.out_df[index, :]
 
 
@@ -89,18 +89,29 @@ class OriginType(Enum):
             "centroid": CentroidOrigin,
             "least outlier": LeastOutlierOrigin,
             "random": RandomOrigin,
-            "weighted": WeightedOrigin
+            "weighted": WeightedOrigin,
         }
         return mapping_to_classes[origin_type]
 
 
 def get_origin(data, out_indicator, or_type) -> OriginMethod:
+    """Get an origin calculation method instance.
+
+    Args:
+        data: The dataset.
+        out_indicator: Array indicating which points are outliers.
+        or_type: Type of origin method ("centroid", "least outlier", "random", "weighted").
+
+    Returns:
+        An OriginMethod instance for the specified type.
+
+    Raises:
+        ValueError: If the origin method type is not recognized.
+    """
     logging.debug(f"given Origin method: {or_type}")
     try:
         class_type = OriginType.from_str(or_type)
         method = class_type.get_class_for_origin_type(or_type)
-
         return method(data, out_indicator)
-    except ValueError:
-        raise ValueError(
-            "No such origin method: " + str(or_type))
+    except ValueError as err:
+        raise ValueError(f"No such origin method: {or_type}") from err

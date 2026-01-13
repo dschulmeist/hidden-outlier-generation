@@ -1,4 +1,5 @@
 import unittest
+
 import numpy as np
 
 # Your function
@@ -6,7 +7,6 @@ from hog_bisect.utils import random_unif_on_sphere  # Assuming the function is i
 
 
 class TestRandomUnifOnSphere(unittest.TestCase):
-
     def test_dimensions(self):
         """Test if the generated points have the correct dimensions."""
         points = random_unif_on_sphere(number=100, dimensions=3, r=1)
@@ -21,5 +21,5 @@ class TestRandomUnifOnSphere(unittest.TestCase):
             self.assertAlmostEqual(distance, 1, places=5)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,11 +1,12 @@
 import logging
 import random
 from itertools import chain, combinations
-from hog_bisect.outlier_detection_method import OutlierDetectionMethod, get_outlier_detection_method
 
 import numpy as np
 from joblib import Parallel, delayed
 from scipy.stats import norm
+
+from hog_bisect.outlier_detection_method import OutlierDetectionMethod, get_outlier_detection_method
 
 FITTING_TIMEOUT_TIME = 60
 DEFAULT_SEED = 5
@@ -13,7 +14,7 @@ DEFAULT_SEED = 5
 
 def random_unif_on_sphere(number, dimensions, r=1, random_state=5):
     normal_deviates = norm.rvs(size=(number, dimensions), random_state=random_state)
-    radius = np.sqrt((normal_deviates ** 2).sum(axis=1))[:, np.newaxis]
+    radius = np.sqrt((normal_deviates**2).sum(axis=1))[:, np.newaxis]
     points = normal_deviates / radius
     return points * r
 
@@ -29,7 +30,9 @@ def subspace_grab(indices, data):
 def gen_rand_subspaces(dims, upper_limit, include_all_attr=True, seed=5):
     rd = random.Random(seed)
     features = list(range(0, dims))
-    rd.shuffle(features, )
+    rd.shuffle(
+        features,
+    )
     subspaces = set()
     # includes every attribute singleton and for every attribute a random subspace with more than 1 feature
     # containing it
@@ -39,19 +42,16 @@ def gen_rand_subspaces(dims, upper_limit, include_all_attr=True, seed=5):
             fts = rd.sample(range(dims), r)
             fts.append(i)
             subspace1 = tuple(fts)
-            subspace2 = tuple([i])
+            subspace2 = (i,)
             if subspace1 not in subspaces:  # ensure it's a new subspace
                 subspaces.add(subspace1)
             if subspace2 not in subspaces:
                 subspaces.add(subspace2)
 
-    # avoid sampling singletons, because they are already included
-    if include_all_attr:
-        lower_limit = 2
-    else:
-        lower_limit = 1
+    # Avoid sampling singletons if they're already included
+    lower_limit = 2 if include_all_attr else 1
 
-    while len(subspaces) < (2 ** upper_limit) - 2:
+    while len(subspaces) < (2**upper_limit) - 2:
         r = rd.randint(lower_limit, dims - 1)
         random_comb = tuple(rd.sample(range(dims), r))
         if random_comb not in subspaces:
@@ -78,7 +78,9 @@ def fit_model(subspace, data, outlier_detection_method, tempdir) -> (tuple, Outl
     return subspace, model
 
 
-def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit, seed=DEFAULT_SEED, n_jobs=1) -> dict:
+def fit_in_all_subspaces(
+    outlier_detection_method, data, tempdir, subspace_limit, seed=DEFAULT_SEED, n_jobs=1
+) -> dict:
     """
     Fits models for all possible subspaces of the given data.
 
@@ -107,13 +109,17 @@ def fit_in_all_subspaces(outlier_detection_method, data, tempdir, subspace_limit
     logging.debug(f"number of jobs in parallel: {n_jobs}")
     # Parallel execution for model fitting
     results = Parallel(n_jobs=n_jobs, timeout=FITTING_TIMEOUT_TIME)(
-        delayed(fit_model)(subspace, data, outlier_detection_method, tempdir) for subspace in subspaces)
+        delayed(fit_model)(subspace, data, outlier_detection_method, tempdir)
+        for subspace in subspaces
+    )
     fitted_subspaces = dict(results)
 
     # Additional handling for full space
     logging.info("Fitting in the full space....")
     full_space = tuple(range(0, dims))
-    fitted_subspaces[full_space] = get_outlier_detection_method(outlier_detection_method)(full_space, tempdir)
+    fitted_subspaces[full_space] = get_outlier_detection_method(outlier_detection_method)(
+        full_space, tempdir
+    )
     fitted_subspaces[full_space].fit(data)
     del results  # Free up memory
 

@@ -3,18 +3,16 @@ import os
 import shutil
 import tempfile
 import time
-from datetime import datetime
 
 import numpy as np
 import pyod.models.lof
 from joblib import Parallel, delayed
 from numpy import ndarray
 
-from hog_bisect import origin_method
-from hog_bisect import utils
+from hog_bisect import origin_method, utils
 from hog_bisect.outlier_detection_method import get_outlier_detection_method
 from hog_bisect.outlier_result_type import OutlierResultType
-from hog_bisect.utils import subspace_grab, fit_in_all_subspaces
+from hog_bisect.utils import fit_in_all_subspaces, subspace_grab
 
 DEFAULT_MAX_DIMENSIONS = 11
 FITTING_TIMEOUT_TIME = 60
@@ -24,10 +22,16 @@ DEFAULT_NUMBER_OF_GEN_POINTS = 100
 DEFAULT_C = 0.5
 DEFAULT_NUMBER_OF_PARTS = 20
 
-#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def outlier_check(x: ndarray, full_space: tuple, fitted_subspaces: dict, verb=False, fast=True) -> OutlierResultType:
+def outlier_check(
+    x: ndarray,
+    full_space: tuple,
+    fitted_subspaces: dict,
+    verb=False,  # noqa: ARG001 - kept for API compatibility
+    fast=True,
+) -> OutlierResultType:
     """
     Check if a point is an outlier in any subspace.
 
@@ -51,8 +55,11 @@ def outlier_check(x: ndarray, full_space: tuple, fitted_subspaces: dict, verb=Fa
     for j, subspace in enumerate(subspaces):
         if subspace == full_space or (len(subspace) == len(full_space)):
             continue
-        if inference(subspace_grab(subspace, x.reshape(1, x.shape[0])), subspace, fitted_subspaces=fitted_subspaces):
-
+        if inference(
+            subspace_grab(subspace, x.reshape(1, x.shape[0])),
+            subspace,
+            fitted_subspaces=fitted_subspaces,
+        ):
             index[j] = 1
             if not isOutlierInFullSpace:
                 # logging.debug(f"found x, outlier in {subspace} but not in full space")
@@ -108,24 +115,32 @@ def get_segmentation_points(length, parts):
     return np.linspace(0, length, num=parts)
 
 
-def interval_check(length, direction, origin, full_space, fitted_subspaces, parts=DEFAULT_NUMBER_OF_PARTS):
+def interval_check(
+    length, direction, origin, full_space, fitted_subspaces, parts=DEFAULT_NUMBER_OF_PARTS
+):
     segmentation_points = get_segmentation_points(length, parts)
     check_if_interval_is_outlier = np.full(len(segmentation_points), -1)
 
     for i, c in enumerate(segmentation_points):
         point_to_check = c * direction + origin
-        check_if_interval_is_outlier[i] = 1 if inference(point_to_check, full_space, fitted_subspaces) else -1
+        check_if_interval_is_outlier[i] = (
+            1 if inference(point_to_check, full_space, fitted_subspaces) else -1
+        )
 
     intervals = construct_intervals(segmentation_points, check_if_interval_is_outlier)
 
     if not intervals:
         if check_if_interval_is_outlier[0] == 1:
             logging.debug("No sub-intervals found, returning the whole interval")
-            return [(segmentation_points[0], segmentation_points[-1]),
-                    (check_if_interval_is_outlier[0], check_if_interval_is_outlier[-1])]
+            return [
+                (segmentation_points[0], segmentation_points[-1]),
+                (check_if_interval_is_outlier[0], check_if_interval_is_outlier[-1]),
+            ]
         else:
             logging.debug("No sub-intervals found, increasing interval length")
-        return interval_check(length * 2, direction, origin, full_space, fitted_subspaces, parts=parts)
+        return interval_check(
+            length * 2, direction, origin, full_space, fitted_subspaces, parts=parts
+        )
 
     return intervals
 
@@ -136,8 +151,12 @@ def construct_intervals(segmentation_points, check_if_interval_is_outlier):
 
     for i in range(1, len(check_if_interval_is_outlier)):
         if check_if_interval_is_outlier[i] != previous:
-            intervals.append([(segmentation_points[i - 1], segmentation_points[i]),
-                              (check_if_interval_is_outlier[i - 1], check_if_interval_is_outlier[i])])
+            intervals.append(
+                [
+                    (segmentation_points[i - 1], segmentation_points[i]),
+                    (check_if_interval_is_outlier[i - 1], check_if_interval_is_outlier[i]),
+                ]
+            )
         previous = check_if_interval_is_outlier[i]
 
     # if not intervals:
@@ -149,10 +168,17 @@ def construct_intervals(segmentation_points, check_if_interval_is_outlier):
     return intervals
 
 
-def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMBER_OF_ITERATIONS,
-           is_check_fast=True,
-           is_fixed_interval_length=True, full_space=None, fitted_subspaces=None, is_verbose=True) -> \
-        (float, OutlierResultType):
+def bisect(
+    direction,
+    interval_length,
+    origin,
+    number_of_iterations=DEFAULT_NUMBER_OF_ITERATIONS,
+    is_check_fast=True,
+    is_fixed_interval_length=True,
+    full_space=None,
+    fitted_subspaces=None,
+    is_verbose=True,
+) -> (float, OutlierResultType):
     """
     Bisection algorithm function
 
@@ -170,8 +196,9 @@ def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMB
     c = DEFAULT_C
     if not is_fixed_interval_length:
         interval_length = interval_length + np.random.uniform(-interval_length / 2, interval_length)
-    found_sub_intervals = interval_check(interval_length, direction, origin, full_space=full_space,
-                                         fitted_subspaces=fitted_subspaces)
+    found_sub_intervals = interval_check(
+        interval_length, direction, origin, full_space=full_space, fitted_subspaces=fitted_subspaces
+    )
     choice = np.random.choice(len(found_sub_intervals), 1)[0,]
     chosen_interval = found_sub_intervals[choice]
     interval_indicator = chosen_interval[1]
@@ -181,11 +208,13 @@ def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMB
     b = interval[1]
     for i in range(number_of_iterations):
         c = (b + a) / 2
-        check_result = outlier_check(c * direction + origin,
-                                     fast=is_check_fast,
-                                     full_space=full_space,
-                                     fitted_subspaces=fitted_subspaces,
-                                     verb=is_verbose)
+        check_result = outlier_check(
+            c * direction + origin,
+            fast=is_check_fast,
+            full_space=full_space,
+            fitted_subspaces=fitted_subspaces,
+            verb=is_verbose,
+        )
 
         outlier_indicator = int(check_result.indicator)
         outlier_type = str(check_result.name)
@@ -197,14 +226,25 @@ def bisect(direction, interval_length, origin, number_of_iterations=DEFAULT_NUMB
         else:
             a = c
         if i == number_of_iterations - 1:
-            logging.debug(f"reached max number of iterations and found no H1 or H2, returning {c} and {outlier_type}")
+            logging.debug(
+                f"reached max number of iterations and found no H1 or H2, returning {c} and {outlier_type}"
+            )
     return c, check_result
 
 
 # inelegant solution, but had problems with doing this as a class method
-def parallel_routine_generate_point(i, interval_length,
-                                    check_fast, fixed_interval_length, origin,
-                                    full_space, odm_dict, seed, om: origin_method.OriginMethod, verbose):
+def parallel_routine_generate_point(
+    i,
+    interval_length,
+    check_fast,
+    fixed_interval_length,
+    origin,
+    full_space,
+    odm_dict,
+    seed,
+    om: origin_method.OriginMethod,
+    verbose,
+):
     dims = len(full_space)
 
     if om.class_type in [origin_method.OriginType.RANDOM, origin_method.OriginType.WEIGHTED]:
@@ -212,11 +252,16 @@ def parallel_routine_generate_point(i, interval_length,
 
     direction = utils.random_unif_on_sphere(2, dims, 1, seed)[0,]
     # print(f"direction: {direction}")
-    bisection_results = bisect(interval_length=interval_length, direction=direction,
-                               is_check_fast=check_fast,
-                               is_fixed_interval_length=fixed_interval_length,
-                               origin=origin, full_space=full_space, fitted_subspaces=odm_dict,
-                               is_verbose=verbose)
+    bisection_results = bisect(
+        interval_length=interval_length,
+        direction=direction,
+        is_check_fast=check_fast,
+        is_fixed_interval_length=fixed_interval_length,
+        origin=origin,
+        full_space=full_space,
+        fitted_subspaces=odm_dict,
+        is_verbose=verbose,
+    )
     hidden_c, outlier_type = bisection_results
 
     if outlier_type in [OutlierResultType.H1, OutlierResultType.H2]:
@@ -226,7 +271,7 @@ def parallel_routine_generate_point(i, interval_length,
         result_point = np.zeros((1, dims))
         result = np.append(result_point, outlier_type.name)
     if i % 100 == 0:
-        #print(f"new origin: {origin}")
+        # print(f"new origin: {origin}")
         logging.info(f"Progress: {i} points generated")
         # logging.debug(f" current result: {result}")
     return result
@@ -243,8 +288,13 @@ class BisectHOGen:
 
     """
 
-    def __init__(self, data, outlier_detection_method=pyod.models.lof.LOF, seed=DEFAULT_SEED
-                 , max_dimensions=DEFAULT_MAX_DIMENSIONS):
+    def __init__(
+        self,
+        data,
+        outlier_detection_method=pyod.models.lof.LOF,
+        seed=DEFAULT_SEED,
+        max_dimensions=DEFAULT_MAX_DIMENSIONS,
+    ):
         """
         Initialize the HOGen class.
 
@@ -272,20 +322,33 @@ class BisectHOGen:
 
     def _initialize_fit_generate(self, n_jobs: int, get_origin_type: str):
         self.start_time = time.time()
-        self.fitted_subspaces_dict = fit_in_all_subspaces(self.outlier_detection_method, self.data, seed=self.seed,
-                                                          tempdir=self.tempdir, subspace_limit=self.max_dimensions,
-                                                          n_jobs=n_jobs)
+        self.fitted_subspaces_dict = fit_in_all_subspaces(
+            self.outlier_detection_method,
+            self.data,
+            seed=self.seed,
+            tempdir=self.tempdir,
+            subspace_limit=self.max_dimensions,
+            n_jobs=n_jobs,
+        )
         self.outlier_indices = self._get_outlier_indices()
-        length = np.max(np.sqrt(np.sum(self.data ** 2, axis=1)))
+        length = np.max(np.sqrt(np.sum(self.data**2, axis=1)))
         logging.debug(f"Length: {length}")
         originmethod = origin_method.get_origin(self.data, self.outlier_indices, get_origin_type)
         origin = originmethod.calculate_origin()
         logging.debug(f"Origin: {origin}")
         return length, origin, originmethod
 
-    def _execute_parallel_routine(self, gen_points: int, length: float, origin: float, n_jobs: int, check_fast: bool,
-                                  is_fixed_interval_length: bool, verbose: bool,
-                                  originmethod: origin_method.OriginMethod):
+    def _execute_parallel_routine(
+        self,
+        gen_points: int,
+        length: float,
+        origin: float,
+        n_jobs: int,
+        check_fast: bool,
+        is_fixed_interval_length: bool,
+        verbose: bool,
+        originmethod: origin_method.OriginMethod,
+    ):
         with Parallel(n_jobs=n_jobs, timeout=FITTING_TIMEOUT_TIME) as parallel:
             return np.array(
                 parallel(
@@ -299,9 +362,11 @@ class BisectHOGen:
                         self.fitted_subspaces_dict,
                         self.seed,
                         originmethod,
-                        verbose
+                        verbose,
                     )
-                    for i in range(gen_points)))
+                    for i in range(gen_points)
+                )
+            )
 
     def _post_process_results(self, bisection_results):
         hidden_x_type = bisection_results[:, -1].reshape(-1, 1)
@@ -322,7 +387,9 @@ class BisectHOGen:
             np.array: An array containing indices of the outliers in the full data.
         """
         if self.fitted_subspaces_dict is None:
-            raise ValueError("fitted_subspaces_dict is None. Please run fit_in_all_subspaces first.")
+            raise ValueError(
+                "fitted_subspaces_dict is None. Please run fit_in_all_subspaces first."
+            )
         # Calculate the number of rows and columns
         n_rows, n_cols = self.data.shape
 
@@ -332,13 +399,21 @@ class BisectHOGen:
         # Iterate over each row
         for i in range(n_rows):
             # Apply the inference method to the row with the tuple of column indices
-            outlier_indices[i] = inference(self.data[i, :], self.full_space, self.fitted_subspaces_dict)
+            outlier_indices[i] = inference(
+                self.data[i, :], self.full_space, self.fitted_subspaces_dict
+            )
 
         return outlier_indices
 
-    def fit_generate(self, gen_points: int = 100, check_fast: bool = True,
-                     is_fixed_interval_length: bool = True, get_origin_type: str = "weighted", verbose: bool = False,
-                     n_jobs: int = 1) -> ndarray:
+    def fit_generate(
+        self,
+        gen_points: int = 100,
+        check_fast: bool = True,
+        is_fixed_interval_length: bool = True,
+        get_origin_type: str = "weighted",
+        verbose: bool = False,
+        n_jobs: int = 1,
+    ) -> ndarray:
         """
         Main function to perform bisection algorithm for generating synthetic hidden outliers in parallel.
 
@@ -355,27 +430,33 @@ class BisectHOGen:
             np.array: Array containing generated hidden outliers.
 
         """
-        if verbose:
-            level = logging.DEBUG
-        else:
-            level = logging.INFO
-        logging.basicConfig(level=level,
-                            format='%(asctime)s - %(levelname)s - %(message)s')
-        logging.info(f"Starting with parameters: gen_points={gen_points}, check_fast={check_fast}, "
-                     f"fixed_interval_length={is_fixed_interval_length}, get_origin_type={get_origin_type}, "
-                     f"verbose={verbose}, n_jobs={n_jobs}")
+        level = logging.DEBUG if verbose else logging.INFO
+        logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s")
+        logging.info(
+            f"Starting with parameters: gen_points={gen_points}, check_fast={check_fast}, "
+            f"fixed_interval_length={is_fixed_interval_length}, get_origin_type={get_origin_type}, "
+            f"verbose={verbose}, n_jobs={n_jobs}"
+        )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             logging.debug(f"Created temporary directory {temp_dir}")
             self.tempdir = temp_dir  # Set the temporary directory
             length, origin, originmethod = self._initialize_fit_generate(n_jobs, get_origin_type)
 
-            logging.info("Generating {} hidden outlier points... ".format(gen_points))
+            logging.info(f"Generating {gen_points} hidden outlier points... ")
             bisection_results = self._execute_parallel_routine(
-                gen_points, length, origin, n_jobs, check_fast, is_fixed_interval_length, verbose, originmethod)
+                gen_points,
+                length,
+                origin,
+                n_jobs,
+                check_fast,
+                is_fixed_interval_length,
+                verbose,
+                originmethod,
+            )
             hidden_x_list = self._post_process_results(bisection_results)
 
-            logging.info("Done! Exec time: {}".format(self.exec_time))
+            logging.info(f"Done! Exec time: {self.exec_time}")
         return hidden_x_list
 
     def print_summary(self):
@@ -386,24 +467,53 @@ class BisectHOGen:
         db_cols = self.data.shape[1]
         db_rows = self.data.shape[0]
         ho_rows = len(self.hidden_x_type)
-        ho_hidden = 1 if isinstance(self.hidden_x_list, list) and len(self.hidden_x_list) != 0 else (
-            len(self.hidden_x_list) if isinstance(self.hidden_x_list, ndarray) else 0
+        ho_hidden = (
+            1
+            if isinstance(self.hidden_x_list, list) and len(self.hidden_x_list) != 0
+            else (len(self.hidden_x_list) if isinstance(self.hidden_x_list, ndarray) else 0)
         )
-        h1_outliers = self.hidden_x_type[np.where(self.hidden_x_type == 'H1')].shape[0]
-        h2_outliers = self.hidden_x_type[np.where(self.hidden_x_type == 'H2')].shape[0]
+        h1_outliers = self.hidden_x_type[np.where(self.hidden_x_type == "H1")].shape[0]
+        h2_outliers = self.hidden_x_type[np.where(self.hidden_x_type == "H2")].shape[0]
 
-        print('Hidden Outlier Generation Method Object' + '\n\n' +
-              'Outlier detection method used: ' + get_outlier_detection_method(self
-                                                                               .outlier_detection_method).name + '\n' +
-              'Synthetic HO generation method employed: ' + "bisect" + '.\n\n' +
-              'Database summary' + ':\n\n' +
-              '* ' + 'Number of features: ' + str(db_cols) + '\n' +
-              '* ' + 'Total number of data points: ' + str(db_rows) + '\n' +
-              '* ' + 'Total amount of synthetic data generated: ' + str(ho_rows) + '\n' +
-              '\t' + '...of which hidden outliers: ' + str(ho_hidden) + '\n' +
-              '* ' + 'Number of H1 outliers: ' + str(h1_outliers) + '\n' +
-              '* ' + 'Number of H2 outliers: ' + str(h2_outliers) + '.\n\n' +
-              'Total execution time: ' + str(self.exec_time) + '.')
+        print(
+            "Hidden Outlier Generation Method Object"
+            + "\n\n"
+            + "Outlier detection method used: "
+            + get_outlier_detection_method(self.outlier_detection_method).name
+            + "\n"
+            + "Synthetic HO generation method employed: "
+            + "bisect"
+            + ".\n\n"
+            + "Database summary"
+            + ":\n\n"
+            + "* "
+            + "Number of features: "
+            + str(db_cols)
+            + "\n"
+            + "* "
+            + "Total number of data points: "
+            + str(db_rows)
+            + "\n"
+            + "* "
+            + "Total amount of synthetic data generated: "
+            + str(ho_rows)
+            + "\n"
+            + "\t"
+            + "...of which hidden outliers: "
+            + str(ho_hidden)
+            + "\n"
+            + "* "
+            + "Number of H1 outliers: "
+            + str(h1_outliers)
+            + "\n"
+            + "* "
+            + "Number of H2 outliers: "
+            + str(h2_outliers)
+            + ".\n\n"
+            + "Total execution time: "
+            + str(self.exec_time)
+            + "."
+        )
 
     def save_to_csv(self, file_name, include_type=False):
         """
