@@ -221,10 +221,12 @@ def interval_check(
     if not intervals:
         if outlier_status[0] == 1:
             logging.debug("No transitions found, returning full interval")
-            return [[
-                (segmentation_points[0], segmentation_points[-1]),
-                (outlier_status[0], outlier_status[-1]),
-            ]]
+            return [
+                [
+                    (segmentation_points[0], segmentation_points[-1]),
+                    (outlier_status[0], outlier_status[-1]),
+                ]
+            ]
         else:
             logging.debug("No transitions found, doubling search length")
             return interval_check(
@@ -252,10 +254,12 @@ def construct_intervals(
 
     for i in range(1, len(outlier_status)):
         if outlier_status[i] != previous:
-            intervals.append([
-                (segmentation_points[i - 1], segmentation_points[i]),
-                (outlier_status[i - 1], outlier_status[i]),
-            ])
+            intervals.append(
+                [
+                    (segmentation_points[i - 1], segmentation_points[i]),
+                    (outlier_status[i - 1], outlier_status[i]),
+                ]
+            )
         previous = outlier_status[i]
 
     return intervals
@@ -533,9 +537,7 @@ class BisectHOGen:
         logging.debug(f"Search length: {length}")
 
         # Set up origin calculation strategy
-        origin_strategy = origin_method.get_origin(
-            self.data, self.outlier_indices, get_origin_type
-        )
+        origin_strategy = origin_method.get_origin(self.data, self.outlier_indices, get_origin_type)
         origin = origin_strategy.calculate_origin()
         logging.debug(f"Initial origin: {origin}")
 
@@ -697,7 +699,9 @@ class BisectHOGen:
             )
             hidden_x_list = self._post_process_results(bisection_results)
 
-            logging.info(f"Complete. Found {len(hidden_x_list)} hidden outliers in {self.exec_time:.2f}s")
+            logging.info(
+                f"Complete. Found {len(hidden_x_list)} hidden outliers in {self.exec_time:.2f}s"
+            )
 
         return hidden_x_list
 

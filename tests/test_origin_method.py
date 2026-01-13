@@ -89,7 +89,7 @@ class TestRandomOrigin:
 
         results = [origin.calculate_origin() for _ in range(10)]
         # At least some should be different (probabilistic, but very likely)
-        unique_count = len(set(tuple(r) for r in results))
+        unique_count = len({tuple(r) for r in results})
         assert unique_count > 1
 
     def test_excludes_outliers(self, small_data, mixed_outlier_indicator):
@@ -129,7 +129,7 @@ class TestWeightedOrigin:
         origin = WeightedOrigin(small_data, outlier_indicator)
 
         results = [origin.calculate_origin() for _ in range(10)]
-        unique_count = len(set(tuple(r) for r in results))
+        unique_count = len({tuple(r) for r in results})
         assert unique_count > 1
 
     def test_class_type(self, small_data, outlier_indicator):

@@ -3,7 +3,6 @@ Tests for utility functions.
 """
 
 import numpy as np
-import pytest
 from pyod.models.lof import LOF
 
 from hog_bisect.utils import (
@@ -198,9 +197,7 @@ class TestFitInAllSubspaces:
         """High-dimensional data uses random subspace sampling."""
         # 12 dimensions > default subspace_limit
         high_dim_data = np.random.randn(50, 12)
-        result = fit_in_all_subspaces(
-            LOF, high_dim_data, temp_dir, subspace_limit=8, seed=42
-        )
+        result = fit_in_all_subspaces(LOF, high_dim_data, temp_dir, subspace_limit=8, seed=42)
         # Should have ~2^8 - 2 + 1 = 255 subspaces (plus full space)
         # But not 2^12 - 2 = 4094
         assert len(result) < 500

@@ -7,9 +7,8 @@ These tests verify the main public API works correctly.
 import numpy as np
 import pytest
 from pyod.models.knn import KNN
-from pyod.models.lof import LOF
 
-from hog_bisect import BisectHOGen, OutlierResultType
+from hog_bisect import BisectHOGen
 
 
 class TestBisectHOGenInit:
