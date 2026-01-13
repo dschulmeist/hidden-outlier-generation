@@ -98,15 +98,21 @@ def get_outlier_detection_method(method: type[BaseDetector] | str) -> type[Outli
         >>> detector = detector_class(subspace=(0, 1), tempdir="/tmp")
         >>> detector.fit(data)
     """
-    if pyod.models.base.BaseDetector.__subclasscheck__(method):
+    # Check string inputs first (before issubclass which requires a class)
+    if isinstance(method, str):
+        if method == "mahalanobis":
+            return ODmahalanobis
+        else:
+            raise ValueError(f"Unknown outlier detection method: {method}")
+
+    # Check if it's a PyOD detector class
+    if isinstance(method, type) and issubclass(method, pyod.models.base.BaseDetector):
         # Configure the class-level model for PyOD wrapper
         OdPYOD.model = method
         OdPYOD.name = method.__name__
         return OdPYOD
-    elif method == "mahalanobis":
-        return ODmahalanobis
-    else:
-        raise ValueError(f"Unknown outlier detection method: {method}")
+
+    raise ValueError(f"Unknown outlier detection method: {method}")
 
 
 class OdPYOD(OutlierDetectionMethod):

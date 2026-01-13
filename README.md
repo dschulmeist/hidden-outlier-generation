@@ -136,6 +136,6 @@ If you use this library in your research, please cite:
   title = {Hidden Outlier Generation},
   author = {Schulmeister, Daniel},
   url = {https://github.com/dschulmeist/hidden-outlier-generation},
-  year = {2024}
+  year = {2023}
 }
 ```
