@@ -41,7 +41,6 @@ uv run mypy src/
 hidden-outlier-generation/
 ├── src/hog_bisect/          # Library code (pip installable)
 ├── examples/                 # Usage examples (not pip installed)
-├── experiments/              # Research experiments (not pip installed)
 ├── tests/                    # Test suite
 ├── pyproject.toml           # Project configuration
 └── uv.lock                  # Dependency lock file
@@ -147,14 +146,12 @@ python -c "from hog_bisect import BisectHOGen; print('Success!')"
 
 ---
 
-## Running Experiments
+## Running Examples
 
 ```bash
-# Run benchmarks
-uv run python experiments/benchmarks/scalability.py
-
-# Run examples
 uv run python examples/basic_usage.py
+uv run python examples/compare_origins.py
+uv run python examples/compare_detectors.py
 ```
 
 ## Questions?

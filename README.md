@@ -23,7 +23,7 @@ The BISECT algorithm finds points in the "area of disagreement" between full-spa
 2. **Direction**: Pick a random direction by sampling from a d-dimensional unit sphere
 3. **Bisection**: Use binary search along the direction to find the boundary where outlier status changes
 
-For high-dimensional data, the library supports projecting data onto a learned manifold (via autoencoders or PCA), generating hidden outliers in the tractable latent space, then decoding back to the original space. See the [experiments](experiments/) for demonstrations.
+For high-dimensional data, the library supports projecting data onto a learned manifold (via autoencoders or PCA), generating hidden outliers in the tractable latent space, then decoding back to the original space.
 
 ## What are Hidden Outliers?
 
@@ -148,13 +148,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and release pr
 
 ## Research
 
-This library was developed as part of my bachelor thesis at Karlsruhe Institute of Technology (KIT) exploring hidden outlier generation using deep learning and manifold learning. Key findings:
+This library was developed as part of a bachelor thesis at Karlsruhe Institute of Technology (KIT) exploring hidden outlier generation using deep learning and manifold learning. Key findings:
 
-- **LOF on learned manifolds consistently outperforms LOF on full feature space** (up to +20% AUC improvement on image datasets)
+- **Autoencoders capture non-linear manifold structure** better than linear methods like PCA
 - **Hidden outliers can serve as synthetic positive class** for training classifiers, turning unsupervised anomaly detection into a supervised problem
 - **Manifold projection makes high-dimensional hidden outlier generation tractable** by reducing the exponential subspace search problem
 
-See the [experiments/](experiments/) directory for runnable notebooks demonstrating these findings.
+Experiment notebooks demonstrating these findings are coming soon.
 
 ## License
 

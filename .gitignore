@@ -94,7 +94,9 @@ ENV/
 env/
 .venv/
 
-# Experiment outputs
-experiments/results/
-*.png
+# Data outputs
 *.csv
+
+# Ignore PNG files
+/*.png
+examples/*.png
