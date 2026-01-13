@@ -187,8 +187,7 @@ class OdPYOD(OutlierDetectionMethod):
         Args:
             model: The fitted PyOD model to persist.
         """
-        if not os.path.exists(self.tempdir):
-            os.makedirs(self.tempdir)
+        os.makedirs(self.tempdir, exist_ok=True)
         with open(self.location, "wb") as f:
             pickle.dump(model, f)
 
