@@ -1,5 +1,10 @@
 # Hidden Outlier Generation
 
+[![CI](https://github.com/dschulmeist/hidden-outlier-generation/actions/workflows/ci.yml/badge.svg)](https://github.com/dschulmeist/hidden-outlier-generation/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/hidden-outlier-generation.svg)](https://pypi.org/project/hidden-outlier-generation/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A Python library for generating synthetic hidden outliers using the bisection algorithm.
 
 ## What are Hidden Outliers?
