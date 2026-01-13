@@ -35,7 +35,7 @@ class OutlierResultType(Enum):
     def __new__(cls, value: str, indicator: int) -> "OutlierResultType":
         obj = object.__new__(cls)
         obj._value_ = str(value)
-        obj.indicator: int = int(indicator)
+        obj.indicator = int(indicator)
         return obj
 
     # Hidden outliers - the targets we want to generate

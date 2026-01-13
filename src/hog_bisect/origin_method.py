@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
@@ -90,7 +90,7 @@ class CentroidOrigin(OriginMethod):
 
     def calculate_origin(self) -> NDArray[np.floating[Any]]:
         """Return the precomputed data centroid."""
-        return self.mean
+        return cast("NDArray[np.floating[Any]]", self.mean)
 
 
 class LeastOutlierOrigin(OriginMethod):
@@ -153,7 +153,7 @@ class RandomOrigin(OriginMethod):
     def calculate_origin(self) -> NDArray[np.floating[Any]]:
         """Return a uniformly random inlier point."""
         index = np.random.choice(self.out_data_length)
-        return self.out_data[index, :]
+        return cast("NDArray[np.floating[Any]]", self.out_data[index, :])
 
 
 class WeightedOrigin(OriginMethod):
@@ -201,7 +201,7 @@ class WeightedOrigin(OriginMethod):
             self.out_df_length,
             p=self.proba_vector_out / self.proba_vector_out_sum,
         )
-        return self.out_df[index, :]
+        return cast("NDArray[np.floating[Any]]", self.out_df[index, :])
 
 
 class OriginType(Enum):
@@ -231,16 +231,21 @@ class OriginType(Enum):
         return OriginType(s)
 
     @classmethod
-    def get_class_for_origin_type(cls, origin_type: str) -> type[OriginMethod]:
+    def get_class_for_origin_type(
+        cls, origin_type: str
+    ) -> Callable[[NDArray[np.floating[Any]], NDArray[np.floating[Any]]], OriginMethod]:
         """Get the OriginMethod subclass for a given type string.
 
         Args:
             origin_type: One of "centroid", "least outlier", "random", "weighted".
 
         Returns:
-            The corresponding OriginMethod subclass (not an instance).
+            The corresponding OriginMethod subclass constructor.
         """
-        mapping: dict[str, type[OriginMethod]] = {
+        mapping: dict[
+            str,
+            Callable[[NDArray[np.floating[Any]], NDArray[np.floating[Any]]], OriginMethod],
+        ] = {
             "centroid": CentroidOrigin,
             "least outlier": LeastOutlierOrigin,
             "random": RandomOrigin,

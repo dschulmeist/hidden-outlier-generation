@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 import pickle
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pyod.models
@@ -75,7 +75,9 @@ class OutlierDetectionMethod(ABC):
         pass
 
 
-def get_outlier_detection_method(method: type[BaseDetector] | str) -> type[OutlierDetectionMethod]:
+def get_outlier_detection_method(
+    method: type[BaseDetector] | str,
+) -> Callable[[tuple[int, ...], str], OutlierDetectionMethod]:
     """Get the appropriate outlier detection wrapper for a given method.
 
     This factory function returns the correct OutlierDetectionMethod subclass
@@ -87,7 +89,8 @@ def get_outlier_detection_method(method: type[BaseDetector] | str) -> type[Outli
                 or the string "mahalanobis" for statistical detection.
 
     Returns:
-        The corresponding OutlierDetectionMethod class (not an instance).
+        A callable that creates OutlierDetectionMethod instances when called
+        with (subspace, tempdir) arguments.
 
     Raises:
         ValueError: If the method is not a recognized PyOD model or "mahalanobis".
@@ -159,7 +162,12 @@ class OdPYOD(OutlierDetectionMethod):
 
         Args:
             data: Training data for this subspace, shape (n_samples, n_subspace_dims).
+
+        Raises:
+            RuntimeError: If model class has not been set via get_outlier_detection_method.
         """
+        if OdPYOD.model is None:
+            raise RuntimeError("OdPYOD.model not set. Use get_outlier_detection_method().")
         init_model = OdPYOD.model()
         init_model.fit(data)
         self.fitted = True
@@ -294,5 +302,9 @@ class ODmahalanobis(OutlierDetectionMethod):
 
         Returns:
             The critical distance threshold.
+
+        Note:
+            Must only be called after fit() has set self.shape.
         """
-        return chi2.ppf(0.95, df=self.shape[1])
+        assert self.shape is not None, "shape must be set before computing critical value"
+        return float(chi2.ppf(0.95, df=self.shape[1]))

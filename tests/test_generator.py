@@ -164,3 +164,64 @@ class TestBisectHOGenOutputMethods:
         csv_path = tmp_path / "outliers.csv"
         with pytest.raises(ValueError, match="No results to save"):
             gen.save_to_csv(str(csv_path))
+
+
+class TestBisectHOGenInputValidation:
+    """Tests for input validation at API boundaries."""
+
+    def test_init_invalid_data_type(self):
+        """Raises TypeError for non-numpy array data."""
+        with pytest.raises(TypeError, match="data must be a numpy array"):
+            BisectHOGen(data=[[1, 2], [3, 4]])
+
+    def test_init_invalid_data_dimensions(self):
+        """Raises ValueError for 1D array."""
+        with pytest.raises(ValueError, match="data must be 2-dimensional"):
+            BisectHOGen(data=np.array([1, 2, 3]))
+
+    def test_init_insufficient_samples(self):
+        """Raises ValueError for single sample."""
+        with pytest.raises(ValueError, match="at least 2 samples"):
+            BisectHOGen(data=np.array([[1, 2, 3]]))
+
+    def test_init_invalid_detector_type(self):
+        """Raises TypeError for non-class detector."""
+        data = np.random.randn(50, 3)
+        with pytest.raises(TypeError, match="must be a class"):
+            BisectHOGen(data=data, outlier_detection_method="LOF")
+
+    def test_init_invalid_detector_class(self):
+        """Raises TypeError for non-PyOD detector class."""
+        data = np.random.randn(50, 3)
+        with pytest.raises(TypeError, match="must be a PyOD BaseDetector subclass"):
+            BisectHOGen(data=data, outlier_detection_method=str)
+
+    def test_init_invalid_seed(self):
+        """Raises ValueError for invalid seed."""
+        data = np.random.randn(50, 3)
+        with pytest.raises(ValueError, match="seed must be a non-negative integer"):
+            BisectHOGen(data=data, seed=-1)
+
+    def test_init_invalid_max_dimensions(self):
+        """Raises ValueError for invalid max_dimensions."""
+        data = np.random.randn(50, 3)
+        with pytest.raises(ValueError, match="max_dimensions must be a positive integer"):
+            BisectHOGen(data=data, max_dimensions=0)
+
+    def test_fit_generate_invalid_gen_points(self, small_data):
+        """Raises ValueError for invalid gen_points."""
+        gen = BisectHOGen(data=small_data)
+        with pytest.raises(ValueError, match="gen_points must be a positive integer"):
+            gen.fit_generate(gen_points=0)
+
+    def test_fit_generate_invalid_origin_type(self, small_data):
+        """Raises ValueError for invalid origin type."""
+        gen = BisectHOGen(data=small_data)
+        with pytest.raises(ValueError, match="get_origin_type must be one of"):
+            gen.fit_generate(gen_points=10, get_origin_type="invalid")
+
+    def test_fit_generate_invalid_n_jobs(self, small_data):
+        """Raises ValueError for invalid n_jobs type."""
+        gen = BisectHOGen(data=small_data)
+        with pytest.raises(ValueError, match="n_jobs must be an integer"):
+            gen.fit_generate(gen_points=10, n_jobs="1")

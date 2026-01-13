@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pyod.models.lof
 from joblib import Parallel, delayed
+from pyod.models.base import BaseDetector
 
 from hog_bisect import origin_method, utils
 from hog_bisect.outlier_detection_method import (
@@ -44,7 +45,6 @@ from hog_bisect.utils import fit_in_all_subspaces, subspace_grab
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-    from pyod.models.base import BaseDetector
 
 # Configuration constants
 DEFAULT_MAX_DIMENSIONS = 11  # Max dims before switching to random subspace sampling
@@ -307,6 +307,10 @@ def bisect(
     check_result = None
     c = DEFAULT_C
 
+    # Validate required parameters
+    assert full_space is not None, "full_space must be provided for bisection"
+    assert fitted_subspaces is not None, "fitted_subspaces must be provided for bisection"
+
     # Optionally add randomness to interval length
     if not is_fixed_interval_length:
         interval_length = interval_length + np.random.uniform(-interval_length / 2, interval_length)
@@ -353,6 +357,8 @@ def bisect(
                 f"returning c={c}, type={check_result.name}"
             )
 
+    # check_result is guaranteed to be set after at least one iteration
+    assert check_result is not None, "No iterations were performed"
     return c, check_result
 
 
@@ -484,7 +490,36 @@ class BisectHOGen:
             max_dimensions: If data has >= this many dimensions, use random
                 subspace sampling instead of full enumeration. This prevents
                 exponential blowup in high dimensions.
+
+        Raises:
+            ValueError: If data is not a valid 2D array with sufficient samples.
+            TypeError: If outlier_detection_method is not a valid PyOD detector class.
         """
+        # Input validation
+        if not isinstance(data, np.ndarray):
+            raise TypeError(f"data must be a numpy array, got {type(data).__name__}")
+        if data.ndim != 2:
+            raise ValueError(f"data must be 2-dimensional, got {data.ndim} dimensions")
+        if data.shape[0] < 2:
+            raise ValueError(f"data must have at least 2 samples, got {data.shape[0]}")
+        if data.shape[1] < 1:
+            raise ValueError(f"data must have at least 1 feature, got {data.shape[1]}")
+
+        if not isinstance(outlier_detection_method, type):
+            raise TypeError(
+                f"outlier_detection_method must be a class, got {type(outlier_detection_method).__name__}"
+            )
+        if not issubclass(outlier_detection_method, BaseDetector):
+            raise TypeError(
+                f"outlier_detection_method must be a PyOD BaseDetector subclass, "
+                f"got {outlier_detection_method.__name__}"
+            )
+
+        if not isinstance(seed, int) or seed < 0:
+            raise ValueError(f"seed must be a non-negative integer, got {seed}")
+        if not isinstance(max_dimensions, int) or max_dimensions < 1:
+            raise ValueError(f"max_dimensions must be a positive integer, got {max_dimensions}")
+
         np.random.seed(seed)
         self.hidden_x_type: NDArray[Any] | None = None
         self.hidden_x_list: NDArray[np.floating[Any]] | None = None
@@ -518,6 +553,9 @@ class BisectHOGen:
             Tuple of (search_length, initial_origin, origin_method_instance).
         """
         self.start_time = time.time()
+
+        # tempdir is set by fit_generate before calling this method
+        assert self.tempdir is not None, "tempdir must be set before initialization"
 
         # Fit models on all relevant subspaces
         self.fitted_subspaces_dict = fit_in_all_subspaces(
@@ -611,6 +649,8 @@ class BisectHOGen:
         if self.tempdir and os.path.exists(self.tempdir):
             shutil.rmtree(self.tempdir)
 
+        # start_time is set at the beginning of _initialize_fit_generate
+        assert self.start_time is not None, "start_time must be set before post-processing"
         self.exec_time = time.time() - self.start_time
         self.hidden_x_list = hidden_x_list
         self.hidden_x_type = hidden_x_type
@@ -672,7 +712,23 @@ class BisectHOGen:
         Returns:
             Array of hidden outlier points, shape (n_hidden, n_features).
             May be empty if no hidden outliers were found.
+
+        Raises:
+            ValueError: If gen_points is not positive or get_origin_type is invalid.
         """
+        # Input validation
+        if not isinstance(gen_points, int) or gen_points < 1:
+            raise ValueError(f"gen_points must be a positive integer, got {gen_points}")
+
+        valid_origin_types = {"centroid", "least outlier", "random", "weighted"}
+        if get_origin_type not in valid_origin_types:
+            raise ValueError(
+                f"get_origin_type must be one of {valid_origin_types}, got '{get_origin_type}'"
+            )
+
+        if not isinstance(n_jobs, int):
+            raise ValueError(f"n_jobs must be an integer, got {type(n_jobs).__name__}")
+
         level = logging.DEBUG if verbose else logging.INFO
         logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s")
         logging.info(
@@ -727,7 +783,7 @@ class BisectHOGen:
         summary = f"""
 Hidden Outlier Generation Summary
 =================================
-Detection method: {get_outlier_detection_method(self.outlier_detection_method).name}
+Detection method: {self.outlier_detection_method.__name__}
 Generation method: bisect
 
 Dataset:
@@ -752,7 +808,7 @@ Execution time: {self.exec_time:.2f}s
             include_type: If True, include the outlier type (H1/H2) as the
                 last column.
         """
-        if self.hidden_x_list is None:
+        if self.hidden_x_list is None or self.hidden_x_type is None:
             raise ValueError("No results to save. Run fit_generate first.")
 
         if not include_type:

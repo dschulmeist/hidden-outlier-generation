@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import random
 from itertools import chain, combinations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -67,7 +67,7 @@ def random_unif_on_sphere(
     normal_deviates = norm.rvs(size=(number, dimensions), random_state=random_state)
     radius = np.sqrt((normal_deviates**2).sum(axis=1))[:, np.newaxis]
     points = normal_deviates / radius
-    return points * r
+    return cast("NDArray[np.floating[Any]]", points * r)
 
 
 def gen_powerset(dims: int) -> set[tuple[int, ...]]:

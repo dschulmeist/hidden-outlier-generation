@@ -5,14 +5,42 @@ on:
     branches:
       - master
     tags:
-      - 'v*'  # Also trigger on version tags
+      - 'v*'
 
 jobs:
-  publish:
+  # Run tests before publishing to ensure package quality
+  test:
     runs-on: ubuntu-latest
-
     # Only run if commit message contains 'publish' OR it's a version tag
     if: contains(github.event.head_commit.message, 'publish') || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Install dependencies
+      run: uv sync --all-extras
+
+    - name: Run linter
+      run: uv run ruff check src/ tests/
+
+    - name: Run type checker
+      run: uv run mypy src/
+
+    - name: Run tests
+      run: uv run pytest tests/ -v
+
+  # Validate version and publish
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -22,6 +50,17 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Validate version tag matches pyproject.toml
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+        PACKAGE_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+        if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+          echo "Error: Tag version ($TAG_VERSION) does not match pyproject.toml version ($PACKAGE_VERSION)"
+          exit 1
+        fi
+        echo "Version validated: $TAG_VERSION"
+
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
@@ -29,6 +68,12 @@ jobs:
 
     - name: Build package
       run: python -m build
+
+    - name: Verify build artifacts
+      run: |
+        ls -la dist/
+        python -m pip install dist/*.whl
+        python -c "from hog_bisect import BisectHOGen, __version__; print(f'Package version: {__version__}')"
 
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
