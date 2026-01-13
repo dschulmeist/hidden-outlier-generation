@@ -38,7 +38,6 @@ from pyod.models.base import BaseDetector
 from hog_bisect import origin_method, utils
 from hog_bisect.outlier_detection_method import (
     OutlierDetectionMethod,
-    get_outlier_detection_method,
 )
 from hog_bisect.outlier_result_type import OutlierResultType
 from hog_bisect.utils import fit_in_all_subspaces, subspace_grab
@@ -398,15 +397,21 @@ def parallel_routine_generate_point(
     """
     dims = len(full_space)
 
+    # Use iteration-specific seed for reproducibility while ensuring diversity
+    # Each worker gets a unique seed derived from base seed + iteration number
+    worker_seed = seed + iteration
+
     # For random/weighted origins, recalculate origin each iteration
+    # Set numpy random state for this worker to ensure reproducibility
+    np.random.seed(worker_seed)
     if origin_method_instance.class_type in (
         origin_method.OriginType.RANDOM,
         origin_method.OriginType.WEIGHTED,
     ):
         origin = origin_method_instance.calculate_origin()
 
-    # Generate random direction on unit sphere
-    direction = utils.random_unif_on_sphere(2, dims, 1, seed)[0]
+    # Generate random direction on unit sphere (using worker-specific seed)
+    direction = utils.random_unif_on_sphere(2, dims, 1, worker_seed)[0]
 
     # Run bisection
     bisection_results = bisect(

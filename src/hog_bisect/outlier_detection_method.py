@@ -20,7 +20,8 @@ from __future__ import annotations
 import os
 import pickle
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyod.models
@@ -94,6 +95,12 @@ def get_outlier_detection_method(
 
     Raises:
         ValueError: If the method is not a recognized PyOD model or "mahalanobis".
+
+    Note:
+        This function modifies class-level attributes on OdPYOD. It is safe to
+        use with multiprocessing (joblib's default backend) where each process
+        has its own memory space. However, it is NOT thread-safe - do not call
+        with different detector types concurrently from multiple threads.
 
     Example:
         >>> from pyod.models.lof import LOF
