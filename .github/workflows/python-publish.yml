@@ -1,37 +1,36 @@
-name: Upload Python Package
+name: Publish to PyPI
 
 on:
   push:
     branches:
-      - main  # or the name of your default branch
+      - master
+    tags:
+      - 'v*'  # Also trigger on version tags
 
 jobs:
-  deploy:
-
+  publish:
     runs-on: ubuntu-latest
 
+    # Only run if commit message contains 'publish' OR it's a version tag
+    if: contains(github.event.head_commit.message, 'publish') || startsWith(github.ref, 'refs/tags/v')
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Check commit message
-      id: check_message
-      run: |
-        echo "::set-output name=message::$(git log -1 --pretty=format:"%s")"
+    - uses: actions/checkout@v4
+
     - name: Set up Python
-      if: contains(steps.check_message.outputs.message, 'publish')
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.x'
-    - name: Install dependencies
-      if: contains(steps.check_message.outputs.message, 'publish')
+        python-version: '3.12'
+
+    - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build
+
     - name: Build package
-      if: contains(steps.check_message.outputs.message, 'publish')
       run: python -m build
-    - name: Publish package
-      if: contains(steps.check_message.outputs.message, 'publish')
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
