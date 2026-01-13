@@ -650,6 +650,7 @@ version = "1.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "joblib" },
+    { name = "matplotlib" },
     { name = "numba" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -682,6 +683,7 @@ dev = [
 requires-dist = [
     { name = "hidden-outlier-generation", extras = ["deep", "dev"], marker = "extra == 'all'" },
     { name = "joblib", specifier = ">=1.4.0" },
+    { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
     { name = "numba", specifier = ">=0.60.0" },
     { name = "numpy", specifier = ">=2.0.0" },

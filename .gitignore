@@ -92,3 +92,8 @@ venv/
 ENV/
 env/
 .venv/
+
+# Experiment outputs
+experiments/results/
+*.png
+*.csv

@@ -221,10 +221,10 @@ def interval_check(
     if not intervals:
         if outlier_status[0] == 1:
             logging.debug("No transitions found, returning full interval")
-            return [
+            return [[
                 (segmentation_points[0], segmentation_points[-1]),
                 (outlier_status[0], outlier_status[-1]),
-            ]
+            ]]
         else:
             logging.debug("No transitions found, doubling search length")
             return interval_check(
