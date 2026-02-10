@@ -138,12 +138,27 @@ class TestBisectHOGenOutputMethods:
         assert "Hidden Outlier Generation Summary" in captured.out
         assert "Features:" in captured.out
 
-    def test_print_summary_before_generate(self, small_data, capsys):
-        """print_summary handles case when fit_generate not called."""
+    def test_print_summary_before_generate(self, small_data):
+        """print_summary raises ValueError when fit_generate not called."""
         gen = BisectHOGen(data=small_data, seed=42)
-        gen.print_summary()
-        captured = capsys.readouterr()
-        assert "No generation results available" in captured.out
+        with pytest.raises(ValueError, match="No generation results available"):
+            gen.print_summary()
+
+    def test_get_summary_returns_string(self, small_data):
+        """get_summary returns a formatted string after generation."""
+        gen = BisectHOGen(data=small_data, seed=42)
+        gen.fit_generate(gen_points=10, n_jobs=1)
+        summary = gen.get_summary()
+        assert isinstance(summary, str)
+        assert "Hidden Outlier Generation Summary" in summary
+        assert "Features:" in summary
+        assert "Execution time:" in summary
+
+    def test_get_summary_before_generate(self, small_data):
+        """get_summary raises ValueError when fit_generate not called."""
+        gen = BisectHOGen(data=small_data, seed=42)
+        with pytest.raises(ValueError, match="No generation results available"):
+            gen.get_summary()
 
     def test_save_to_csv(self, small_data, tmp_path):
         """save_to_csv writes results to file."""
@@ -207,6 +222,20 @@ class TestBisectHOGenInputValidation:
         data = np.random.randn(50, 3)
         with pytest.raises(ValueError, match="max_dimensions must be a positive integer"):
             BisectHOGen(data=data, max_dimensions=0)
+
+    def test_init_data_with_nan(self):
+        """Raises ValueError for data containing NaN values."""
+        data = np.random.randn(50, 3)
+        data[10, 1] = np.nan
+        with pytest.raises(ValueError, match="NaN or infinite values"):
+            BisectHOGen(data=data)
+
+    def test_init_data_with_inf(self):
+        """Raises ValueError for data containing infinite values."""
+        data = np.random.randn(50, 3)
+        data[5, 0] = np.inf
+        with pytest.raises(ValueError, match="NaN or infinite values"):
+            BisectHOGen(data=data)
 
     def test_fit_generate_invalid_gen_points(self, small_data):
         """Raises ValueError for invalid gen_points."""

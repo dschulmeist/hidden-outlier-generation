@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hidden-outlier-generation"
-version = "1.0.1"
+version = "1.0.2"
 description = "Python implementation of the bisect algorithm for hidden outlier generation."
 readme = "README.md"
 authors = [{ name = "David Schulmeister", email = "david.schulmeister@student.kit.edu" }]

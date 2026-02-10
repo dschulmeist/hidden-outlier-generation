@@ -311,6 +311,10 @@ class ODmahalanobis(OutlierDetectionMethod):
 
         Note:
             Must only be called after fit() has set self.shape.
+
+        Raises:
+            RuntimeError: If called before fit() has been called.
         """
-        assert self.shape is not None, "shape must be set before computing critical value"
+        if self.shape is None:
+            raise RuntimeError("Internal error: shape must be set before computing critical value")
         return float(chi2.ppf(0.95, df=self.shape[1]))

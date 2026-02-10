@@ -307,8 +307,10 @@ def bisect(
     c = DEFAULT_C
 
     # Validate required parameters
-    assert full_space is not None, "full_space must be provided for bisection"
-    assert fitted_subspaces is not None, "fitted_subspaces must be provided for bisection"
+    if full_space is None:
+        raise ValueError("full_space must be provided for bisection")
+    if fitted_subspaces is None:
+        raise ValueError("fitted_subspaces must be provided for bisection")
 
     # Optionally add randomness to interval length
     if not is_fixed_interval_length:
@@ -357,7 +359,8 @@ def bisect(
             )
 
     # check_result is guaranteed to be set after at least one iteration
-    assert check_result is not None, "No iterations were performed"
+    if check_result is None:
+        raise RuntimeError("Bisection failed: no iterations were performed")
     return c, check_result
 
 
@@ -497,7 +500,8 @@ class BisectHOGen:
                 exponential blowup in high dimensions.
 
         Raises:
-            ValueError: If data is not a valid 2D array with sufficient samples.
+            ValueError: If data is not a valid 2D array with sufficient samples,
+                or if data contains NaN or infinite values.
             TypeError: If outlier_detection_method is not a valid PyOD detector class.
         """
         # Input validation
@@ -509,6 +513,8 @@ class BisectHOGen:
             raise ValueError(f"data must have at least 2 samples, got {data.shape[0]}")
         if data.shape[1] < 1:
             raise ValueError(f"data must have at least 1 feature, got {data.shape[1]}")
+        if not np.isfinite(data).all():
+            raise ValueError("data contains NaN or infinite values, which are not supported")
 
         if not isinstance(outlier_detection_method, type):
             raise TypeError(
@@ -560,7 +566,8 @@ class BisectHOGen:
         self.start_time = time.time()
 
         # tempdir is set by fit_generate before calling this method
-        assert self.tempdir is not None, "tempdir must be set before initialization"
+        if self.tempdir is None:
+            raise RuntimeError("Internal error: tempdir must be set before initialization")
 
         # Fit models on all relevant subspaces
         self.fitted_subspaces_dict = fit_in_all_subspaces(
@@ -655,7 +662,8 @@ class BisectHOGen:
             shutil.rmtree(self.tempdir)
 
         # start_time is set at the beginning of _initialize_fit_generate
-        assert self.start_time is not None, "start_time must be set before post-processing"
+        if self.start_time is None:
+            raise RuntimeError("Internal error: start_time must be set before post-processing")
         self.exec_time = time.time() - self.start_time
         self.hidden_x_list = hidden_x_list
         self.hidden_x_type = hidden_x_type
@@ -734,20 +742,21 @@ class BisectHOGen:
         if not isinstance(n_jobs, int):
             raise ValueError(f"n_jobs must be an integer, got {type(n_jobs).__name__}")
 
-        level = logging.DEBUG if verbose else logging.INFO
-        logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s")
-        logging.info(
+        logger = logging.getLogger(__name__)
+        if verbose:
+            logger.setLevel(logging.DEBUG)
+        logger.info(
             f"Starting generation: points={gen_points}, fast={check_fast}, "
             f"fixed_length={is_fixed_interval_length}, origin={get_origin_type}, n_jobs={n_jobs}"
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            logging.debug(f"Using temporary directory: {temp_dir}")
+            logger.debug(f"Using temporary directory: {temp_dir}")
             self.tempdir = temp_dir
 
             length, origin, origin_strategy = self._initialize_fit_generate(n_jobs, get_origin_type)
 
-            logging.info(f"Generating {gen_points} candidate points...")
+            logger.info(f"Generating {gen_points} candidate points...")
             bisection_results = self._execute_parallel_routine(
                 gen_points,
                 length,
@@ -760,21 +769,24 @@ class BisectHOGen:
             )
             hidden_x_list = self._post_process_results(bisection_results)
 
-            logging.info(
+            logger.info(
                 f"Complete. Found {len(hidden_x_list)} hidden outliers in {self.exec_time:.2f}s"
             )
 
         return hidden_x_list
 
-    def print_summary(self) -> None:
-        """Print a summary of the generation results.
+    def get_summary(self) -> str:
+        """Generate a summary of the generation results.
 
-        Displays statistics about the data, generated points, and breakdown
-        by hidden outlier type (H1 vs H2).
+        Returns:
+            Formatted string with statistics about the data, generated points,
+            and breakdown by hidden outlier type (H1 vs H2).
+
+        Raises:
+            ValueError: If fit_generate has not been called yet.
         """
         if self.hidden_x_list is None or self.hidden_x_type is None:
-            print("No generation results available. Run fit_generate first.")
-            return
+            raise ValueError("No generation results available. Run fit_generate first.")
 
         db_cols = self.data.shape[1]
         db_rows = self.data.shape[0]
@@ -782,11 +794,10 @@ class BisectHOGen:
 
         ho_hidden = len(self.hidden_x_list) if isinstance(self.hidden_x_list, np.ndarray) else 0
 
-        h1_count = np.sum(self.hidden_x_type == "H1")
-        h2_count = np.sum(self.hidden_x_type == "H2")
+        h1_count = int(np.sum(self.hidden_x_type == "H1"))
+        h2_count = int(np.sum(self.hidden_x_type == "H2"))
 
-        summary = f"""
-Hidden Outlier Generation Summary
+        return f"""Hidden Outlier Generation Summary
 =================================
 Detection method: {self.outlier_detection_method.__name__}
 Generation method: bisect
@@ -801,9 +812,17 @@ Results:
     - H1 (subspace outliers): {h1_count}
     - H2 (full-space outliers): {h2_count}
 
-Execution time: {self.exec_time:.2f}s
-"""
-        print(summary)
+Execution time: {self.exec_time:.2f}s"""
+
+    def print_summary(self) -> None:
+        """Print a summary of the generation results to stdout.
+
+        Convenience method that prints the output of get_summary().
+
+        Raises:
+            ValueError: If fit_generate has not been called yet.
+        """
+        print(self.get_summary())
 
     def save_to_csv(self, file_name: str, include_type: bool = False) -> None:
         """Save generated hidden outliers to a CSV file.
