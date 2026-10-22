@@ -1,0 +1,61 @@
+name: Refresh security dependency lock
+
+on:
+  push:
+    branches:
+      - security/dependency-fixes-2026-10
+    paths:
+      - .github/workflows/security-lock-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.10.0"
+      - name: Refresh affected dependencies
+        run: |
+          uv lock --upgrade-package pillow --upgrade-package requests --upgrade-package pygments --upgrade-package pytest --upgrade-package urllib3 --upgrade-package idna --upgrade-package setuptools --upgrade-package keras --upgrade-package virtualenv
+      - name: Validate patched minimums in uv.lock
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          from packaging.version import Version
+
+          required = {
+              "pillow": "12.3.0",
+              "requests": "2.33.0",
+              "pygments": "2.20.0",
+              "pytest": "9.0.3",
+              "urllib3": "2.7.0",
+              "idna": "3.15",
+              "setuptools": "83.0.0",
+              "keras": "3.15.0",
+              "virtualenv": "21.7.12",
+          }
+          packages = tomllib.loads(Path("uv.lock").read_text())["package"]
+          resolved = {package["name"].lower(): package["version"] for package in packages}
+          for name, minimum in required.items():
+              assert name in resolved, f"Missing {name} in uv.lock"
+              assert Version(resolved[name]) >= Version(minimum), (
+                  f"{name} {resolved[name]} is below {minimum}"
+              )
+              print(f"{name}: {resolved[name]}")
+          PY
+      - name: Commit regenerated lock
+        run: |
+          if ! git diff --quiet -- uv.lock; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add uv.lock
+            git commit -m "fix(deps): refresh vulnerable packages in uv.lock"
+            git push
+          fi
